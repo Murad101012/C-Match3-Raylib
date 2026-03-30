@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile and Run",
+            "type": "shell",
+            "command": "gcc main.c ./libraylib.a -o match3 -lGL -lm -lpthread -ldl -lrt -lX11 && ./match3",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}

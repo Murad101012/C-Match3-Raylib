@@ -82,7 +82,7 @@ static void _initialize_game() {
 }
 
 // This is the old version of _gem_return_on_mouse_click
-static void _gem_return_on_mouse_click_depraced() {
+static void _gem_return_on_mouse_click_deprecated() {
   Vector2 mouse_position = GetMousePosition();
   printf("%f %f", GetMousePosition().x, GetMousePosition().y);
   for (int i = 0; i < ROWS; i++) {
@@ -102,24 +102,21 @@ static void _gem_return_on_mouse_click_depraced() {
 
 /**
  * @brief Translates screen-space mouse coordinates into 2D grid indices.
- * * Maps the absolute mouse position to the corresponding gem in the `board` array
- * by accounting for the board's screen offset and the size of each gem slot 
- * (including padding/spacing).
  * * @param None (Uses Raylib's GetMousePosition internally).
  * @return void (Currently logs the clicked cell index to the console).
- * @note Requires the `board` global array and `_board_beginning_position` to be initialized.
+ * @note Currently the gap between gems are clickable but, it's intentionally left
  */
 static void _gem_return_on_mouse_click() {
-  Vector2 mouse_position = GetMousePosition();
-  int index_x = (int)((mouse_position.y /
-                       (float)(_rectangle_height + _rectangle_row_space)) -
-                      _board_beginning_position_y /
-                          (float)(_rectangle_height + _rectangle_row_space));
-  int index_y = (int)((mouse_position.x /
-                       (float)(_rectangle_width + _rectangle_cols_space)) -
-                      _board_beginning_position_x /
-                          (float)(_rectangle_width + _rectangle_cols_space));
-  if (index_x < ROWS && index_y < COLS && index_x >= 0 && index_y >= 0) {
+  Vector2 mouse_position_normalized = 
+  (Vector2){GetMousePosition().x - _board_beginning_position_x,
+            GetMousePosition().y - _board_beginning_position_y};
+
+  int index_x = (int)((mouse_position_normalized.y / (float)(_rectangle_height + _rectangle_row_space)));
+  int index_y = (int)((mouse_position_normalized.x / (float)(_rectangle_width + _rectangle_cols_space)));
+
+  if (index_x < ROWS && index_y < COLS
+     && index_x >= 0 && index_y >= 0
+     && mouse_position_normalized.x >= 0 && mouse_position_normalized.y >= 0) {
     printf("You clicked: %d\n", board[index_x][index_y].cell_index);
   }
 }
