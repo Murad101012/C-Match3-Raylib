@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define ROWS 3
-#define COLS 3
+#define ROWS 7
+#define COLS 7
 
 #define GEMCHOSENCOUNT 2
 
@@ -31,6 +31,7 @@ static Color _gem_type_color[] = {RED, BLUE, LIME, GOLD};
 struct Gem{
   int type;
   Color color;
+  bool _is_matched;
   int order; 
   int pos_y;
   int pos_x;
@@ -76,7 +77,9 @@ static void _draw_board() {
 static void _draw_gems() {
   for (int i = 0; i < ROWS; i++) {
     for (int j = 0; j < COLS; j++) {
-      DrawCircle(gems[i][j].pos_x, gems[i][j].pos_y, _circle_radius, gems[i][j].color);
+      if(gems[i][j].type >= 0){
+        DrawCircle(gems[i][j].pos_x, gems[i][j].pos_y, _circle_radius, _gem_type_color[gems[i][j].type]);
+      }
     }
   }
 }
@@ -90,45 +93,8 @@ static void _update_gem_position_based_on_cell(int i, int j)
   gems[i][j].index_y = cell[i][j].index_y;
 }
 
-static void _initialize_game() {
-  // Creating randomized gams are type between 1 and 4;
-  // Initializing board
-  int _current_board_x_position = _board_beginning_position_x;
-  int _current_board_y_position = _board_beginning_position_y;
-
-  srand(time(NULL));
-
-  int step = 0;
-  for (int i = 0; i < ROWS; i++) {
-    for (int j = 0; j < COLS; j++) {
-
-      //BOARD section
-      cell[i][j].index_x = i;
-      cell[i][j].index_y = j;
-      cell[i][j].order = step;
-
-      cell[i][j].pos_y = _current_board_y_position;
-      cell[i][j].pos_x = _current_board_x_position;
-      _current_board_x_position += _rectangle_cols_space + _rectangle_width;
 
 
-      //GEMS section
-      gems[i][j].type = rand() % 4 + 1;
-      gems[i][j].color = _gem_type_color[gems[i][j].type - 1];
-      _update_gem_position_based_on_cell(i, j); //Updating gem's properties based on it's cell
-      
-      step++;
-    }
-
-    _current_board_x_position = _board_beginning_position_x;
-    _current_board_y_position += _rectangle_row_space + _rectangle_height;
-  }
-
-  //Clean junk values
-  for(int i = 0; i < GEMCHOSENCOUNT; i++){
-    _chosen_gems[i].gem_assigned = false;
-  }
-}
 
 
 
@@ -188,6 +154,121 @@ static void _gem_choser(struct Gem gem){
   }
 }
 
+static bool _check_swap_gem_requirement(){
+  //Check four direction
+  return true; //Assuming it's true
+}
+
+static bool _check_horizontal_matches(int i, int j)
+{
+  if(COLS - 2 > j){
+    for(int y = 1; y < 3; y++)
+    {
+      if(gems[i][j].type != gems[i][j + y].type)
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+static bool _check_horizontal_matches_reverse(int i, int j){
+  if (j >= 2){
+    for(int y = -1; y > -3; y--)
+    {
+      if(gems[i][j].type != gems[i][j + y].type)
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+static bool _check_vertical_matches(int i, int j)
+{
+  if(ROWS - 2 > i){
+    for(int x = 1; x < 3; x++)
+    {
+    if(gems[i][j].type != gems[i + x][j].type)
+    {
+      return false;
+    }
+    }
+    return true;
+  }
+  return false;
+}
+
+static bool _check_vertical_matches_reverse(int i, int j)
+{
+  if(i >= 2){
+    for(int x = -1; x > -3; x--)
+    {
+      if(gems[i][j].type != gems[i + x][j].type)
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+static void _remove_matches(){
+  for(int i = 0; i < ROWS; i++){
+    for(int j = 0; j < COLS; j++){
+      if(gems[i][j]._is_matched){
+        gems[i][j].type = -1;
+      }
+    }
+  }
+}
+
+static void _find_matches(){
+  bool match_found = false;
+  for(int i = 0; i < ROWS; i++){
+    for(int j = 0; j < COLS; j++){
+      if(ROWS - 2 > i){
+        //Look for vertical
+        if(gems[i][j].type != -1 && _check_vertical_matches(i, j)){
+          for(int x = 0; x < 3; x++){
+            gems[i + x][j]._is_matched = true;
+            if(!match_found){
+              match_found = true;
+            }
+          }
+        }
+      }
+      if(COLS - 2 > j){
+        //Look for horizontal
+        if(gems[i][j].type != -1 && _check_horizontal_matches(i, j)){
+          for(int y = 0; y < 3; y++){
+            gems[i][j + y]._is_matched = true;
+            if(!match_found){
+              match_found = true;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @brief Reset chosen gems
+ * @note Only gem_assigned boolean reset, since _gem_choser() assumes
+ * _chosen_gems.gems_chosen is not assigned if gem_assigned return false
+ */
+static void _reset_chosen_gems_state(){
+  for(int i = 0; i < GEMCHOSENCOUNT; i++){
+    _chosen_gems[i].gem_assigned = false;
+  }
+}
+
 static void _swap_gems(){
   for(int i = 0; i < ROWS; i++){
     for(int j = 0; j < COLS; j++){
@@ -224,17 +305,143 @@ static void _swap_gems(){
   }
 }
 
-static bool _check_swap_gem_requirement(){
-  //Check four direction
-  return true; //Assuming it's true
+/**
+ * @brief Find matches and change it's type based on horizontal/vertical check
+ * 
+ */
+static void _reinitialize_matches(){
+  //We collect types those are cause match in four direction by eliminating
+  int _gem_types_length = sizeof(_gem_type_color) / sizeof(_gem_type_color[0]);
+  /*Since comparing between type and color not possible and originally
+  each _gem_type_color's index equal to type (e.g: _gem_type_color[2] is same as type = 2)
+  creating an index based color from 0 to 1 represinting color's index*/
+  int _gem_types[_gem_types_length];
+  for(int i = 0; i < _gem_types_length; i++){
+    _gem_types[i] = i; //Each index represent corresponding color equal to index's of _gem_type_color
+  }
+
+  int _excluded_gem_types_length = _gem_types_length; //This is just for naming
+  int _excluded_gem_types[_excluded_gem_types_length];
+
+  /*Filling array with -999 to prevent garbage value and showing index with -999 as didn't
+  assigned number yet*/
+  for(int i = 0; i < _excluded_gem_types_length; i++){
+    _excluded_gem_types[i] = -999;
+  }
+  bool _while_worked_once = false;
+  for(int i = 0; i < ROWS; i++){
+    for(int j = 0; j < COLS; j++){
+      if(gems[i][j]._is_matched)
+      {
+        bool _gem_match_neutralized = false;
+
+        //Steps for _excluded_gem_types to change next value if swapped type also need to be excluded
+        int step = 0;
+        while(!_gem_match_neutralized && !_while_worked_once)
+        {
+          //Assuming it's as neutralized. If it's not, it will automatically set to the false
+          _gem_match_neutralized = true;
+          //_while_worked_once = true;
+
+          _excluded_gem_types[step] = gems[i][j].type;
+          step++;
+        
+          //Checking next type from 0 to end where it's not excluded yet
+          for(int x = 0; x < _gem_types_length; x++){
+            bool _found_a_new_type_that_not_excluded_yet = true;
+            for(int y = 0; y < _excluded_gem_types_length; y++){
+              if(_gem_types[x] == _excluded_gem_types[y]){
+                _found_a_new_type_that_not_excluded_yet = false;
+                break;
+              }
+            }
+            if(_found_a_new_type_that_not_excluded_yet){
+              printf("Chancing %d to %d type for gems[%d][%d]\n", gems[i][j].type, x, i, j);
+              gems[i][j].type = x; //Assigning found type that hasn't checked for match yet
+              break;
+            }
+          }
+
+          //Look for vertical
+          if(_gem_match_neutralized){
+            printf("Vertical called for: gems[%d][%d]\n", i, j);
+            if(_check_vertical_matches(i, j)){
+              _gem_match_neutralized = false;
+            }
+          }
+            
+          //Look for horizontal
+          if(_gem_match_neutralized){
+          printf("Horizontal called for: gems[%d][%d]\n", i, j);
+            if(_check_horizontal_matches(i, j)){
+              _gem_match_neutralized = false;
+            }
+          }
+
+          //Look for vertical reverse
+          if(_gem_match_neutralized){
+            printf("Vertical reverse called for: gems[%d][%d]\n", i, j);
+            if(_check_vertical_matches_reverse(i, j)){
+              _gem_match_neutralized = false;
+            }
+          }
+
+          //Look for horizontal reverse
+          if (_gem_match_neutralized){
+            printf("Horizontal reverse called for: gems[%d][%d]\n", i, j);
+            if(_check_horizontal_matches_reverse(i, j)){
+              _gem_match_neutralized = false;
+            }
+          }
+        }
+        //If while loop end, it means a type found that not cause match so, marking as not matched
+        gems[i][j]._is_matched = false;
+        //Resetting exclude types for next gems those cause matched (-999 means not assigned anything as null)
+        for(int z = 0; z < _excluded_gem_types_length; z++){
+          _excluded_gem_types[z] = -999;
+        }
+      }
+    }
+  }
 }
 
-/**
- * @brief Reset chosen gems
- * @note Only gem_assigned boolean reset, since _gem_choser() assumes
- * _chosen_gems.gems_chosen is not assigned if gem_assigned return false
- */
-static void _reset_chosen_gems_state(){
+
+static void _initialize_game() {
+  // Creating randomized gams are type between 1 and 4;
+  // Initializing board
+  int _current_board_x_position = _board_beginning_position_x;
+  int _current_board_y_position = _board_beginning_position_y;
+
+  srand(time(NULL));
+
+  int step = 0;
+  for (int i = 0; i < ROWS; i++) {
+    for (int j = 0; j < COLS; j++) {
+
+      //BOARD section
+      cell[i][j].index_x = i;
+      cell[i][j].index_y = j;
+      cell[i][j].order = step;
+
+      cell[i][j].pos_y = _current_board_y_position;
+      cell[i][j].pos_x = _current_board_x_position;
+      _current_board_x_position += _rectangle_cols_space + _rectangle_width;
+
+
+      //GEMS section
+      gems[i][j].type = rand() % 4;
+      gems[i][j].color = _gem_type_color[gems[i][j].type];
+      gems[i][j]._is_matched = false;
+      _update_gem_position_based_on_cell(i, j); //Updating gem's properties based on it's cell
+      
+      step++;
+    }
+
+    _current_board_x_position = _board_beginning_position_x;
+    _current_board_y_position += _rectangle_row_space + _rectangle_height;
+  }
+
+  //Clean junk values
   for(int i = 0; i < GEMCHOSENCOUNT; i++){
     _chosen_gems[i].gem_assigned = false;
   }
@@ -249,6 +456,8 @@ if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         }
         if(_check_swap_gem_requirement()){
           _swap_gems();
+          _find_matches();
+          _remove_matches();
           _reset_chosen_gems_state();
         }
       }
@@ -256,8 +465,16 @@ if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 }
 
 int main(void) {
+  SetTraceLogLevel(LOG_WARNING);
   _initialize_window();
+
+  //Preparing board and random gems
   _initialize_game();
+
+  //Finding matches those happen when first initializing and removing them to prevent
+  //free score for player
+  _find_matches();
+  _reinitialize_matches();
 
   while (!WindowShouldClose()) {
     logic();
