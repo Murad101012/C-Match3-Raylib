@@ -4,7 +4,7 @@
 #include <time.h>
 
 #define ROWS 5
-#define COLS 1
+#define COLS 5
 
 #define GEMCHOSENCOUNT 2
 
@@ -24,6 +24,8 @@ static Color _rectangle_color = GREEN;
 
 static int _circle_radius = 25;
 
+static bool _is_screen_dirty = true;
+
 static Color _gem_type_color[] = {RED, BLUE, LIME, GOLD};
 
 struct Gem
@@ -39,6 +41,8 @@ struct Gem
 };
 
 struct Gem gems[ROWS][COLS];
+
+struct Gem _illegal_gem;
 
 struct Cell
 {
@@ -121,6 +125,7 @@ static struct Gem _gem_return_on_mouse_click()
     printf("You clicked: %d\n", gems[index_x][index_y].order);
     return gems[index_x][index_y];
   }
+  return _illegal_gem;
 }
 
 /**
@@ -251,7 +256,7 @@ static void _remove_matches()
 }
 
 /**
- * @brief Cheap version match finder which is CPU friendly
+ * @brief Cheap version match finder for all gems and mark them _is_matched = true, which is CPU friendly
  * @note It's required to use only when the gem's position, types or any change on board/gems
  * will not happen until the _find_matches() finish
  */
@@ -296,7 +301,11 @@ static void _find_matches()
   }
 }
 
-static bool _match_avaibility_checker_for_gem(int i, int j)
+/**
+ * @brief Check a gem if have match from all possible directions
+ *
+ */
+static bool _match_availability_checker_for_gem(int i, int j)
 {
   // Look for vertical
   printf("Vertical called for: gems[%d][%d]\n", i, j);
@@ -451,7 +460,7 @@ static void _reinitialize_matches()
             }
           }
 
-          _gem_match_neutralized = !_match_avaibility_checker_for_gem(i, j);
+          _gem_match_neutralized = !_match_availability_checker_for_gem(i, j);
         }
         // If while loop end, it means a type found that not cause match so, marking as not matched
         gems[i][j]._is_matched = false;
@@ -502,6 +511,9 @@ static void _initialize_game()
     _current_board_y_position += _rectangle_row_space + _rectangle_height;
   }
 
+  // It's for ouside of the board when player click there
+  _illegal_gem.type = -999;
+
   // Clean junk values
   for (int i = 0; i < GEMCHOSENCOUNT; i++)
   {
@@ -513,9 +525,32 @@ static void logic()
 {
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
   {
-    _gem_choser(_gem_return_on_mouse_click()); // Current it's assume player always clink into the grid
+    struct Gem gem = _gem_return_on_mouse_click();
+    /*Checking if player click to a gem inside the board or clicked to illegal gem where we assume it's
+    outside of the board or a empty cell where not gem available (marked as gem.type = -1);*/
+    if (gem.type == -999 || gem.type == -1)
+    {
+      _reset_chosen_gems_state();
+      return;
+    }
+
+    _gem_choser(gem);
     if (_chosen_gems[GEMCHOSENCOUNT - 1].gem_assigned == true)
     {
+      /* Manhattan Distance to check distance between chosen two gems if:
+         1. Distance = 1: Eligable to swap those gems;
+         2. Distance >= 2: Distance between two gems are more than two or chosen as diagonally;
+         3. Distance = 0: Choose same gem again. */
+      int _d = abs(_chosen_gems[0]._chosen_gem.index_x - _chosen_gems[1]._chosen_gem.index_x) +
+               abs(_chosen_gems[0]._chosen_gem.index_y - _chosen_gems[1]._chosen_gem.index_y);
+
+      if (_d != 1)
+      {
+        _reset_chosen_gems_state();
+        _gem_choser(gem);
+        return;
+      }
+
       for (int i = 0; i < GEMCHOSENCOUNT; i++)
       {
         printf("%d gem: %d\n", i, _chosen_gems[i]._chosen_gem.order);
@@ -529,6 +564,15 @@ static void logic()
       }
     }
   }
+}
+
+static void _refresh_the_screen()
+{
+  BeginDrawing();
+  ClearBackground(_background_color);
+  _draw_board();
+  _draw_gems();
+  EndDrawing();
 }
 
 int main(void)
@@ -547,11 +591,10 @@ int main(void)
   while (!WindowShouldClose())
   {
     logic();
-    BeginDrawing();
-    ClearBackground(_background_color);
-    _draw_board();
-    _draw_gems();
-    EndDrawing();
+    if (_is_screen_dirty)
+    {
+      _refresh_the_screen();
+    }
   }
 
   return 0;
