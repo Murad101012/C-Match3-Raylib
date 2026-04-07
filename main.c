@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <bits/time.h>
+#include <linux/time.h>
+#include <stdint.h>
 
 #define ROWS 7
 #define COLS 7
@@ -30,14 +33,15 @@ static Color _gem_type_color[] = {RED, BLUE, LIME, GOLD, PURPLE};
 
 struct Gem
 {
-  int type;
-  Color color;
   bool _is_matched;
-  int order;
-  int pos_y;
-  int pos_x;
-  int index_x;
-  int index_y;
+  uint8_t order;
+  uint8_t index_x;
+  uint8_t index_y;
+
+  int16_t type;
+  int16_t pos_y;
+  int16_t pos_x;
+  Color color;
 };
 
 struct Gem gems[ROWS][COLS];
@@ -298,7 +302,7 @@ static void _find_matches()
  * @brief Check a gem if have match from all possible directions
  *
  */
-static bool _match_availability_checker_for_gem(int i, int j)
+static inline bool _match_availability_checker_for_gem(int i, int j)
 {
   // Look for vertical
   // printf("Vertical called for: gems[%d][%d]\n", i, j);
@@ -572,6 +576,36 @@ static void _refresh_the_screen()
   EndDrawing();
 }
 
+static void benchmark()
+{
+  struct timespec start, end;
+  long iterations = 100000;
+
+  // Start the clock
+  clock_gettime(CLOCK_MONOTONIC, &start);
+
+  for (long n = 0; n < iterations; n++)
+  {
+    for (int i = 0; i < ROWS; i++)
+    {
+      for (int j = 0; j < COLS; j++)
+      {
+        _match_availability_checker_for_gem(i, j);
+      }
+    }
+  }
+
+  // Stop the clock
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
+  // Calculate total time in seconds
+  double time_taken = (end.tv_sec - start.tv_sec) +
+                      (end.tv_nsec - start.tv_nsec) / 1e9;
+
+  printf("Total time for %ld runs: %f seconds\n", iterations, time_taken);
+  printf("Average time per run: %f microseconds\n", (time_taken / iterations) * 1e6);
+}
+
 int main(void)
 {
   SetTraceLogLevel(LOG_WARNING);
@@ -584,6 +618,8 @@ int main(void)
   // free score for player
   _find_matches();
   _reinitialize_matches();
+
+  // benchmark();
 
   while (!WindowShouldClose())
   {
