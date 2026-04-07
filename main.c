@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define ROWS 5
-#define COLS 5
+#define ROWS 7
+#define COLS 7
 
 #define GEMCHOSENCOUNT 2
 
@@ -26,7 +26,7 @@ static int _circle_radius = 25;
 
 static bool _is_screen_dirty = true;
 
-static Color _gem_type_color[] = {RED, BLUE, LIME, GOLD};
+static Color _gem_type_color[] = {RED, BLUE, LIME, GOLD, PURPLE};
 
 struct Gem
 {
@@ -51,7 +51,6 @@ struct Cell
   int pos_y;
   int index_x;
   int index_y;
-  struct Gem gem;
 };
 
 struct Cell cell[ROWS][COLS];
@@ -122,7 +121,7 @@ static struct Gem _gem_return_on_mouse_click()
 
   if (index_x < ROWS && index_y < COLS && index_x >= 0 && index_y >= 0 && mouse_position_normalized.x >= 0 && mouse_position_normalized.y >= 0)
   {
-    printf("You clicked: %d\n", gems[index_x][index_y].order);
+    // printf("You clicked: %d\n", gems[index_x][index_y].order);
     return gems[index_x][index_y];
   }
   return _illegal_gem;
@@ -143,12 +142,6 @@ static void _gem_choser(struct Gem gem)
       break;
     }
   }
-}
-
-static bool _check_swap_gem_requirement()
-{
-  // Check four direction
-  return true; // Assuming it's true
 }
 
 static bool _check_horizontal_matches(int i, int j)
@@ -308,37 +301,44 @@ static void _find_matches()
 static bool _match_availability_checker_for_gem(int i, int j)
 {
   // Look for vertical
-  printf("Vertical called for: gems[%d][%d]\n", i, j);
+  // printf("Vertical called for: gems[%d][%d]\n", i, j);
   if (_check_vertical_matches(i, j))
     return true;
 
   // Look for horizontal
-  printf("Horizontal called for: gems[%d][%d]\n", i, j);
+  // printf("Horizontal called for: gems[%d][%d]\n", i, j);
   if (_check_horizontal_matches(i, j))
     return true;
 
   // Look for vertical reverse
-  printf("Vertical reverse called for: gems[%d][%d]\n", i, j);
+  // printf("Vertical reverse called for: gems[%d][%d]\n", i, j);
   if (_check_vertical_matches_reverse(i, j))
     return true;
 
   // Look for horizontal reverse
-  printf("Horizontal reverse called for: gems[%d][%d]\n", i, j);
+  // printf("Horizontal reverse called for: gems[%d][%d]\n", i, j);
   if (_check_horizontal_matches_reverse(i, j))
     return true;
 
   // Look for sides of gem
-  printf("Left/Right called for: gems[%d][%d]\n", i, j);
+  // printf("Left/Right called for: gems[%d][%d]\n", i, j);
   if (_check_left_right_match(i, j))
     return true;
 
   // Look bottom/above of gem
-  printf("Up/Down called for: gems[%d][%d]\n", i, j);
+  // printf("Up/Down called for: gems[%d][%d]\n", i, j);
   if (_check_up_down_match(i, j))
     return true;
 
   // If match no found
   return false;
+}
+
+static bool _check_swap_gem_requirement()
+{
+  // Before checking all gems, it do simple check for those two selected gems
+  return (_match_availability_checker_for_gem(_chosen_gems[0]._chosen_gem.index_x, _chosen_gems[0]._chosen_gem.index_y) ||
+          _match_availability_checker_for_gem(_chosen_gems[1]._chosen_gem.index_x, _chosen_gems[1]._chosen_gem.index_y));
 }
 
 /**
@@ -356,16 +356,8 @@ static void _reset_chosen_gems_state()
 
 static void _swap_gems()
 {
-  for (int i = 0; i < ROWS; i++)
-  {
-    for (int j = 0; j < COLS; j++)
-    {
-      printf("%d", gems[i][j].type);
-    }
-    printf("\n");
-  }
-
   struct Gem tempGem = _chosen_gems[0]._chosen_gem;
+  printf("type[0]:%d, type[1]:%d\n", _chosen_gems[0]._chosen_gem.type, _chosen_gems[1]._chosen_gem.type);
 
   // Chancing gems array index of _chosen_gems[0]
   gems[_chosen_gems[0]._chosen_gem.index_x][_chosen_gems[0]._chosen_gem.index_y] =
@@ -381,16 +373,6 @@ static void _swap_gems()
   for (int i = 0; i < GEMCHOSENCOUNT; i++)
   {
     _chosen_gems[i].gem_assigned = false;
-  }
-
-  printf("\n");
-  for (int i = 0; i < ROWS; i++)
-  {
-    for (int j = 0; j < COLS; j++)
-    {
-      printf("%d", gems[i][j].type);
-    }
-    printf("\n");
   }
 }
 
@@ -454,7 +436,6 @@ static void _reinitialize_matches()
             }
             if (_found_a_new_type_that_not_excluded_yet)
             {
-              printf("Chancing %d to %d type for gems[%d][%d]\n", gems[i][j].type, x, i, j);
               gems[i][j].type = x; // Assigning found type that hasn't checked for match yet
               break;
             }
@@ -555,11 +536,27 @@ static void logic()
       {
         printf("%d gem: %d\n", i, _chosen_gems[i]._chosen_gem.order);
       }
+
+      _swap_gems();
       if (_check_swap_gem_requirement())
       {
-        _swap_gems();
+        printf("_check_swap_gem_requirement turned true\n");
         _find_matches();
         _remove_matches();
+        _reset_chosen_gems_state();
+      }
+      else
+      {
+        /* MY SOLUTION THAT DIDN'T WORKED
+        struct Chosen_Gems _chosen_gem_first = _chosen_gems[0];
+        _chosen_gems[0] = _chosen_gems[1];
+        _chosen_gems[1] = _chosen_gem_first;*/
+
+        // GEMINI'S SOLUTION
+        _chosen_gems[0]._chosen_gem = gems[_chosen_gems[0]._chosen_gem.index_x][_chosen_gems[0]._chosen_gem.index_y];
+        _chosen_gems[1]._chosen_gem = gems[_chosen_gems[1]._chosen_gem.index_x][_chosen_gems[1]._chosen_gem.index_y];
+
+        _swap_gems();
         _reset_chosen_gems_state();
       }
     }
