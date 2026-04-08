@@ -31,41 +31,19 @@ static bool _is_screen_dirty = true;
 
 static Color _gem_type_color[] = {RED, BLUE, LIME, GOLD, PURPLE};
 
-struct Gem
-{
-  bool _is_matched;
-  uint8_t order;
-  uint8_t index_x;
-  uint8_t index_y;
+// Properties of general entities
+static int16_t _entity_type[ROWS][COLS];
+static int16_t _entity_posx_posy[ROWS][COLS][2 /*ROWS&COLS*/];
 
-  int16_t type;
-  int16_t pos_y;
-  int16_t pos_x;
-  Color color;
-};
+// Properties of specifially gem entity
+static bool _gems_match_state[ROWS][COLS];
 
-struct Gem gems[ROWS][COLS];
+// Properties of Cell
+static int16_t _cell_posx_posy[ROWS][COLS][2 /*ROWS&COLS*/];
 
-struct Gem _illegal_gem;
+static int16_t _returned_gem_index_on_mouse_click[2];
 
-struct Cell
-{
-  int order;
-  int pos_x;
-  int pos_y;
-  int index_x;
-  int index_y;
-};
-
-struct Cell cell[ROWS][COLS];
-
-struct Chosen_Gems
-{
-  bool gem_assigned;
-  struct Gem _chosen_gem;
-};
-
-struct Chosen_Gems _chosen_gems[GEMCHOSENCOUNT];
+static int16_t _chosen_gems_indexs[GEMCHOSENCOUNT][2 /*ROWS&COLS*/];
 
 static void _initialize_window()
 {
@@ -80,7 +58,7 @@ static void _draw_board()
   {
     for (int j = 0; j < COLS; j++)
     {
-      DrawRectangle(cell[i][j].pos_x, cell[i][j].pos_y, _rectangle_width, _rectangle_height, _rectangle_color);
+      DrawRectangle(_cell_posx_posy[i][j][0], _cell_posx_posy[i][j][1], _rectangle_width, _rectangle_height, _rectangle_color);
     }
   }
 }
@@ -91,9 +69,9 @@ static void _draw_gems()
   {
     for (int j = 0; j < COLS; j++)
     {
-      if (gems[i][j].type >= 0)
+      if (_entity_type[i][j] >= 0)
       {
-        DrawCircle(gems[i][j].pos_x, gems[i][j].pos_y, _circle_radius, _gem_type_color[gems[i][j].type]);
+        DrawCircle(_entity_posx_posy[i][j][0], _entity_posx_posy[i][j][1], _circle_radius, _gem_type_color[_entity_type[i][j]]);
       }
     }
   }
@@ -101,20 +79,15 @@ static void _draw_gems()
 
 static void _update_gem_position_based_on_cell(int i, int j)
 {
-  gems[i][j].pos_x = cell[i][j].pos_x + _rectangle_width / 2;
-  gems[i][j].pos_y = cell[i][j].pos_y + _rectangle_height / 2;
-  gems[i][j].order = cell[i][j].order;
-  gems[i][j].index_x = cell[i][j].index_x;
-  gems[i][j].index_y = cell[i][j].index_y;
+  _entity_posx_posy[i][j][0] = _cell_posx_posy[i][j][0] + _rectangle_width / 2;
+  _entity_posx_posy[i][j][1] = _cell_posx_posy[i][j][1] + _rectangle_height / 2;
 }
 
 /**
  * @brief Translates screen-space mouse coordinates into 2D grid indices.
  * * @param None (Uses Raylib's GetMousePosition internally).
- * @return void (Currently logs the clicked cell index to the console).
- * @note Currently the gap between gems are clickable but, it's intentionally left
  */
-static struct Gem _gem_return_on_mouse_click()
+static void _gem_return_on_mouse_click()
 {
   Vector2 mouse_position_normalized =
       (Vector2){GetMousePosition().x - _board_beginning_position_x,
@@ -125,24 +98,28 @@ static struct Gem _gem_return_on_mouse_click()
 
   if (index_x < ROWS && index_y < COLS && index_x >= 0 && index_y >= 0 && mouse_position_normalized.x >= 0 && mouse_position_normalized.y >= 0)
   {
-    // printf("You clicked: %d\n", gems[index_x][index_y].order);
-    return gems[index_x][index_y];
+    _returned_gem_index_on_mouse_click[0] = index_x;
+    _returned_gem_index_on_mouse_click[1] = index_y;
+    printf("Returned gem index:[%d][%d]\n", index_x, index_y);
+    return;
   }
-  return _illegal_gem;
+  _returned_gem_index_on_mouse_click[0] = -999;
+  _returned_gem_index_on_mouse_click[1] = -999;
 }
 
 /**
- * @brief Process information of last chosen 2 gems to keep in array
+ * @brief Keep index (Row/Cols) of gem's type
  *
  */
-static void _gem_choser(struct Gem gem)
+static void _gem_choser(int row, int col)
 {
   for (int i = 0; i < GEMCHOSENCOUNT; i++)
   {
-    if (_chosen_gems[i].gem_assigned == false)
+    // We only check rows since, if it's -999, cols also must be -999
+    if (_chosen_gems_indexs[i][0] == -999)
     {
-      _chosen_gems[i]._chosen_gem = gem;
-      _chosen_gems[i].gem_assigned = true;
+      _chosen_gems_indexs[i][0] = row;
+      _chosen_gems_indexs[i][1] = col;
       break;
     }
   }
@@ -154,7 +131,7 @@ static bool _check_horizontal_matches(int i, int j)
   {
     for (int y = 1; y < 3; y++)
     {
-      if (gems[i][j].type != gems[i][j + y].type)
+      if (_entity_type[i][j] != _entity_type[i][j + y])
       {
         return false;
       }
@@ -170,7 +147,7 @@ static bool _check_horizontal_matches_reverse(int i, int j)
   {
     for (int y = -1; y > -3; y--)
     {
-      if (gems[i][j].type != gems[i][j + y].type)
+      if (_entity_type[i][j] != _entity_type[i][j + y])
       {
         return false;
       }
@@ -186,7 +163,7 @@ static bool _check_vertical_matches(int i, int j)
   {
     for (int x = 1; x < 3; x++)
     {
-      if (gems[i][j].type != gems[i + x][j].type)
+      if (_entity_type[i][j] != _entity_type[i + x][j])
       {
         return false;
       }
@@ -202,7 +179,7 @@ static bool _check_vertical_matches_reverse(int i, int j)
   {
     for (int x = -1; x > -3; x--)
     {
-      if (gems[i][j].type != gems[i + x][j].type)
+      if (_entity_type[i][j] != _entity_type[i + x][j])
       {
         return false;
       }
@@ -216,7 +193,7 @@ static bool _check_left_right_match(int i, int j)
 {
   if (COLS - 1 > j && j >= 1)
   {
-    if ((gems[i][j].type != gems[i][j - 1].type) || (gems[i][j].type != gems[i][j + 1].type))
+    if ((_entity_type[i][j] != _entity_type[i][j - 1]) || (_entity_type[i][j] != _entity_type[i][j + 1]))
     {
       return false;
     }
@@ -229,7 +206,7 @@ static bool _check_up_down_match(int i, int j)
 {
   if (ROWS - 1 > i && i >= 1)
   {
-    if ((gems[i][j].type != gems[i - 1][j].type) || (gems[i][j].type != gems[i + 1][j].type))
+    if ((_entity_type[i][j] != _entity_type[i - 1][j]) || (_entity_type[i][j] != _entity_type[i + 1][j]))
     {
       return false;
     }
@@ -244,9 +221,9 @@ static void _remove_matches()
   {
     for (int j = 0; j < COLS; j++)
     {
-      if (gems[i][j]._is_matched)
+      if (_gems_match_state[i][j])
       {
-        gems[i][j].type = -1;
+        _entity_type[i][j] = -1;
       }
     }
   }
@@ -267,11 +244,11 @@ static void _find_matches()
       if (ROWS - 2 > i)
       {
         // Look for vertical
-        if (gems[i][j].type != -1 && _check_vertical_matches(i, j))
+        if (_entity_type[i][j] != -1 && _check_vertical_matches(i, j))
         {
           for (int x = 0; x < 3; x++)
           {
-            gems[i + x][j]._is_matched = true;
+            _gems_match_state[i + x][j] = true;
             if (!match_found)
             {
               match_found = true;
@@ -282,11 +259,11 @@ static void _find_matches()
       if (COLS - 2 > j)
       {
         // Look for horizontal
-        if (gems[i][j].type != -1 && _check_horizontal_matches(i, j))
+        if (_entity_type[i][j] != -1 && _check_horizontal_matches(i, j))
         {
           for (int y = 0; y < 3; y++)
           {
-            gems[i][j + y]._is_matched = true;
+            _gems_match_state[i][j + y] = true;
             if (!match_found)
             {
               match_found = true;
@@ -341,43 +318,31 @@ static inline bool _match_availability_checker_for_gem(int i, int j)
 static bool _check_swap_gem_requirement()
 {
   // Before checking all gems, it do simple check for those two selected gems
-  return (_match_availability_checker_for_gem(_chosen_gems[0]._chosen_gem.index_x, _chosen_gems[0]._chosen_gem.index_y) ||
-          _match_availability_checker_for_gem(_chosen_gems[1]._chosen_gem.index_x, _chosen_gems[1]._chosen_gem.index_y));
+  return (_match_availability_checker_for_gem(_chosen_gems_indexs[0][0], _chosen_gems_indexs[0][1]) ||
+          _match_availability_checker_for_gem(_chosen_gems_indexs[1][0], _chosen_gems_indexs[1][1]));
 }
 
 /**
  * @brief Reset chosen gems
- * @note Only gem_assigned boolean reset, since _gem_choser() assumes
- * _chosen_gems.gems_chosen is not assigned if gem_assigned return false
  */
 static void _reset_chosen_gems_state()
 {
   for (int i = 0; i < GEMCHOSENCOUNT; i++)
   {
-    _chosen_gems[i].gem_assigned = false;
+    _chosen_gems_indexs[i][0] = -999;
+    _chosen_gems_indexs[i][1] = -999;
   }
 }
 
-static void _swap_gems()
+static void _swap_gems_types()
 {
-  struct Gem tempGem = _chosen_gems[0]._chosen_gem;
-  printf("type[0]:%d, type[1]:%d\n", _chosen_gems[0]._chosen_gem.type, _chosen_gems[1]._chosen_gem.type);
+  // Taking the type of first element
+  int16_t tempType = _entity_type[_chosen_gems_indexs[0][0]][_chosen_gems_indexs[0][1]];
 
-  // Chancing gems array index of _chosen_gems[0]
-  gems[_chosen_gems[0]._chosen_gem.index_x][_chosen_gems[0]._chosen_gem.index_y] =
-      _chosen_gems[1]._chosen_gem;
+  // Then swapping them
+  _entity_type[_chosen_gems_indexs[0][0]][_chosen_gems_indexs[0][1]] = _entity_type[_chosen_gems_indexs[1][0]][_chosen_gems_indexs[1][1]];
 
-  // Chancing gems array index of _chosen_gems[1]
-  gems[_chosen_gems[1]._chosen_gem.index_x][_chosen_gems[1]._chosen_gem.index_y] =
-      tempGem;
-
-  _update_gem_position_based_on_cell(_chosen_gems[0]._chosen_gem.index_x, _chosen_gems[0]._chosen_gem.index_y);
-  _update_gem_position_based_on_cell(_chosen_gems[1]._chosen_gem.index_x, _chosen_gems[1]._chosen_gem.index_y);
-
-  for (int i = 0; i < GEMCHOSENCOUNT; i++)
-  {
-    _chosen_gems[i].gem_assigned = false;
-  }
+  _entity_type[_chosen_gems_indexs[1][0]][_chosen_gems_indexs[1][1]] = tempType;
 }
 
 /**
@@ -411,7 +376,7 @@ static void _reinitialize_matches()
   {
     for (int j = 0; j < COLS; j++)
     {
-      if (gems[i][j]._is_matched)
+      if (_gems_match_state[i][j])
       {
         bool _gem_match_neutralized = false;
 
@@ -423,7 +388,7 @@ static void _reinitialize_matches()
           _gem_match_neutralized = true;
           //_while_worked_once = true;
 
-          _excluded_gem_types[step] = gems[i][j].type;
+          _excluded_gem_types[step] = _entity_type[i][j];
           step++;
 
           // Checking next type from 0 to end where it's not excluded yet
@@ -440,7 +405,7 @@ static void _reinitialize_matches()
             }
             if (_found_a_new_type_that_not_excluded_yet)
             {
-              gems[i][j].type = x; // Assigning found type that hasn't checked for match yet
+              _entity_type[i][j] = x; // Assigning found type that hasn't checked for match yet
               break;
             }
           }
@@ -448,7 +413,7 @@ static void _reinitialize_matches()
           _gem_match_neutralized = !_match_availability_checker_for_gem(i, j);
         }
         // If while loop end, it means a type found that not cause match so, marking as not matched
-        gems[i][j]._is_matched = false;
+        _gems_match_state[i][j] = false;
         // Resetting exclude types for next gems those cause matched (-999 means not assigned anything as null)
         for (int z = 0; z < _excluded_gem_types_length; z++)
         {
@@ -474,19 +439,13 @@ static void _initialize_game()
     for (int j = 0; j < COLS; j++)
     {
 
-      // BOARD section
-      cell[i][j].index_x = i;
-      cell[i][j].index_y = j;
-      cell[i][j].order = step;
-
-      cell[i][j].pos_y = _current_board_y_position;
-      cell[i][j].pos_x = _current_board_x_position;
+      _cell_posx_posy[i][j][1] = _current_board_y_position;
+      _cell_posx_posy[i][j][0] = _current_board_x_position;
       _current_board_x_position += _rectangle_cols_space + _rectangle_width;
 
       // GEMS section
-      gems[i][j].type = rand() % 4;
-      gems[i][j].color = _gem_type_color[gems[i][j].type];
-      gems[i][j]._is_matched = false;
+      _entity_type[i][j] = rand() % 4;
+      _gems_match_state[i][j] = false;
       _update_gem_position_based_on_cell(i, j); // Updating gem's properties based on it's cell
 
       step++;
@@ -496,52 +455,47 @@ static void _initialize_game()
     _current_board_y_position += _rectangle_row_space + _rectangle_height;
   }
 
-  // It's for ouside of the board when player click there
-  _illegal_gem.type = -999;
-
   // Clean junk values
-  for (int i = 0; i < GEMCHOSENCOUNT; i++)
-  {
-    _chosen_gems[i].gem_assigned = false;
-  }
+  _reset_chosen_gems_state();
 }
 
 static void logic()
 {
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
   {
-    struct Gem gem = _gem_return_on_mouse_click();
+    _gem_return_on_mouse_click();
+
     /*Checking if player click to a gem inside the board or clicked to illegal gem where we assume it's
-    outside of the board or a empty cell where not gem available (marked as gem.type = -1);*/
-    if (gem.type == -999 || gem.type == -1)
+      outside of the board or a empty cell where not gem available (marked as gem.type = -1);*/
+    if (_returned_gem_index_on_mouse_click[0] == -999 || _returned_gem_index_on_mouse_click[0] == -1)
     {
       _reset_chosen_gems_state();
       return;
     }
 
-    _gem_choser(gem);
-    if (_chosen_gems[GEMCHOSENCOUNT - 1].gem_assigned == true)
+    _gem_choser(_returned_gem_index_on_mouse_click[0], _returned_gem_index_on_mouse_click[1]);
+
+    printf("First gem index:[%d][%d], Second gem index:[%d][%d]\n",
+           _chosen_gems_indexs[0][0], _chosen_gems_indexs[0][1], _chosen_gems_indexs[1][0], _chosen_gems_indexs[1][1]);
+
+    if (_chosen_gems_indexs[GEMCHOSENCOUNT - 1][1] != -999)
     {
       /* Manhattan Distance to check distance between chosen two gems if:
          1. Distance = 1: Eligable to swap those gems;
          2. Distance >= 2: Distance between two gems are more than two or chosen as diagonally;
          3. Distance = 0: Choose same gem again. */
-      int _d = abs(_chosen_gems[0]._chosen_gem.index_x - _chosen_gems[1]._chosen_gem.index_x) +
-               abs(_chosen_gems[0]._chosen_gem.index_y - _chosen_gems[1]._chosen_gem.index_y);
+      int _d = abs(_chosen_gems_indexs[0][0] - _chosen_gems_indexs[1][0]) +
+               abs(_chosen_gems_indexs[0][1] - _chosen_gems_indexs[1][1]);
 
       if (_d != 1)
       {
         _reset_chosen_gems_state();
-        _gem_choser(gem);
+        // If the distance more than once, we assume player want to choose second gem as it's first gem to match with something else
+        _gem_choser(_returned_gem_index_on_mouse_click[0], _returned_gem_index_on_mouse_click[1]);
         return;
       }
 
-      for (int i = 0; i < GEMCHOSENCOUNT; i++)
-      {
-        printf("%d gem: %d\n", i, _chosen_gems[i]._chosen_gem.order);
-      }
-
-      _swap_gems();
+      _swap_gems_types();
       if (_check_swap_gem_requirement())
       {
         printf("_check_swap_gem_requirement turned true\n");
@@ -551,16 +505,8 @@ static void logic()
       }
       else
       {
-        /* MY SOLUTION THAT DIDN'T WORKED
-        struct Chosen_Gems _chosen_gem_first = _chosen_gems[0];
-        _chosen_gems[0] = _chosen_gems[1];
-        _chosen_gems[1] = _chosen_gem_first;*/
-
-        // GEMINI'S SOLUTION
-        _chosen_gems[0]._chosen_gem = gems[_chosen_gems[0]._chosen_gem.index_x][_chosen_gems[0]._chosen_gem.index_y];
-        _chosen_gems[1]._chosen_gem = gems[_chosen_gems[1]._chosen_gem.index_x][_chosen_gems[1]._chosen_gem.index_y];
-
-        _swap_gems();
+        // We revert swap of gems, since they doesn't meet the require for swapping gems (E.g, the match didn't happen when player swap those gems)
+        _swap_gems_types();
         _reset_chosen_gems_state();
       }
     }
