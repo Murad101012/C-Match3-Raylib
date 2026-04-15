@@ -2,14 +2,32 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Compile and Run",
+            "label": "RUN_MAKEFILE_NOW",
             "type": "shell",
-            "command": "gcc main.c ./libraylib.a -o match3 -lGL -lm -lpthread -ldl -lrt -lX11 && ./match3",
+            "command": "make && ./match3",
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": ["$gcc"]
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
         }
     ]
 }
