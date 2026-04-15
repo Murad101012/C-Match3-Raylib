@@ -1,0 +1,6 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cpptools",
+    "C_Cpp.autocompleteAddParentheses": true,
+    "C_Cpp.errorSquiggles": "enabled"
+}
