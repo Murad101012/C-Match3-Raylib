@@ -2,47 +2,95 @@
 #include "game_logic.h"
 #include "src/display.h"
 #include <esp_heap_caps.h>
+#include <string.h>
 
 // Prevents calling get_ function twice for both x and y
-static Vec2I cache_cell;
 static Vec2I cache_entity;
+static Vec2I cache_cell;
 static int16_t cache_entity_type;
 static bool _is_screen_dirty = true;
 
+uint16_t *test_buffer = nullptr;
+
 void initialize_render()
 {
+  // 1. Calculate bytes: 480 * 480 * 2 (16-bit is 2 bytes)
+  size_t buffer_size = 480 * 480 * 2;
 
-}
+  // 2. Allocate memory in PSRAM
+  test_buffer = (uint16_t *)heap_caps_malloc(buffer_size, MALLOC_CAP_SPIRAM);
 
-void _draw_board() {
+  if (test_buffer == nullptr)
+  {
+    Serial.println("Failed to allocate test buffer!");
+    return;
+  }
 
-  for (int i = 0; i < MAX_ROWS; i++) {
-    for (int j = 0; j < MAX_COLS; j++) {
-      cache_cell = get_cell_position((Vec2I){i, j});
-      gfx->fillRect(cache_cell.x, cache_cell.y, _rectangle_width,
-                    _rectangle_height, _rectangle_color);
-    }
+  // 3. Fill the buffer with a color manually
+  for (int i = 0; i < (480 * 480); i++)
+  {
+    test_buffer[i] = 0;
   }
 }
 
-void _draw_gems() {
-  for (int i = 0; i < MAX_ROWS; i++) {
-    for (int j = 0; j < MAX_COLS; j++) {
-      cache_entity_type = get_entity_type((Vec2I){i, j});
-      if (cache_entity_type >= 0) {
-        cache_cell = get_entity_position((Vec2I){i, j});
-        gfx->fillCircle(cache_cell.x, cache_cell.y, _circle_radius,
-                        _gem_type_color[cache_entity_type]);
+void _draw_board()
+{
+  for (int i = 0; i < MAX_ROWS; i++)
+  {
+    for (int j = 0; j < MAX_COLS; j++)
+    {
+      cache_cell = get_cell_position((Vec2I){i, j});
+      const uint16_t *cell = cell_table[0];
+      int step = 0;
+
+      for (int y = cache_cell.y; y < _rectangle_height + cache_cell.y; y++)
+      {
+        for (int x = cache_cell.x; x < _rectangle_width + cache_cell.x; x++)
+        {
+          if (cell[step] != 0x0000){
+            test_buffer[y * 480 + x] = cell[step];
+          }
+          step++;
+        }
       }
     }
   }
 }
 
-//For now this only called when match happen at swap
+void _draw_gems()
+{
+  for (int i = 0; i < MAX_ROWS; i++)
+  {
+    for (int j = 0; j < MAX_COLS; j++)
+    {
+      cache_entity_type = get_entity_type((Vec2I){i, j});
+
+      // Ensure the type is valid and within our table bounds
+      if (cache_entity_type >= 0 && cache_entity_type < GEM_TYPE_LENGTH)
+      {
+        cache_entity = get_entity_position((Vec2I){i, j});
+        int step = 0;
+        const uint16_t *current_gem_sprite = gem_types_table[cache_entity_type];
+
+        for (int y = cache_entity.y; y < cache_entity.y + gem_height; y++)
+        {
+          for (int x = cache_entity.x; x < cache_entity.x + gem_width; x++)
+          {
+            if (current_gem_sprite[step] != 0x0000){
+              test_buffer[y * 480 + x] = current_gem_sprite[step];
+            }
+            step++;
+          }
+        }
+      }
+    }
+  }
+}
+
 void _refresh_the_screen()
 {
-  gfx->fillScreen(BLACK);
   _draw_board();
   _draw_gems();
   gfx->flush();
+  gfx->draw16bitRGBBitmap(0, 0, test_buffer, 480, 480);
 }

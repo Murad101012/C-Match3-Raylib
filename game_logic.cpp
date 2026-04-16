@@ -128,7 +128,7 @@ void set_entity_match_state(Vec2I entity_index, bool state_new)
 void _update_gem_position_based_on_cell(int i, int j)
 {
   Vec2I cell_position_cache = get_cell_position(Vec2I(i, j));
-  set_entity_position((Vec2I){i, j}, (Vec2I){cell_position_cache.x + _rectangle_width / 2, cell_position_cache.y + _rectangle_height / 2});
+  set_entity_position((Vec2I){i, j}, (Vec2I){cell_position_cache.x + _rectangle_width / 4, cell_position_cache.y + _rectangle_height / 4});
 }
 
 /**
