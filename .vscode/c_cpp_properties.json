@@ -832,6 +832,7 @@
             "compilerArgs": [
                 "-mlongcalls",
                 "-mdisable-hardware-atomics",
+                "-mfix-esp32-psram-cache-issue",
                 ""
             ]
         }
