@@ -3,9 +3,9 @@
 #include <src/Touch_GT911.h>
 
 #define MAX_ROWS 7
-#define MAX_COLS 6
+#define MAX_COLS 7
 #define GEM_CHOSEN_COUNT 2
-#define GEM_TYPE_LENGTH 5
+#define GEM_TYPE_LENGTH 6
 
 extern uint16_t _gem_type_color[GEM_TYPE_LENGTH];
 
@@ -41,7 +41,26 @@ extern int8_t _rectangle_row_space;
 extern int8_t _rectangle_cols_space;
 extern uint16_t _rectangle_color;
 
-extern int8_t _circle_radius;
+extern int8_t gem_width;
+extern int8_t gem_height;
+
+extern const uint16_t *gem_types_table[GEM_TYPE_LENGTH];
+extern const uint16_t *cell_table[1];
+
+typedef enum
+{
+    GEM_RED,
+    GEM_GREEN,
+    GEM_BLUE,
+    GEM_YELLOW,
+    GEM_PURPLE,
+    GEM_ORANGE
+} gem_type;
+
+typedef enum
+{
+    CELL
+} cell_type;
 
 #define TOUCH_SDA 19
 #define TOUCH_SCL 45

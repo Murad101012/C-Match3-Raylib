@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <Arduino.h>
 
 #include "game_logic.h"
 #include "render.h"
@@ -18,6 +19,11 @@ static void _initialize_esp()
 
   gfx->begin(); // calls Arduino_4848_Display::begin()
   gfx->setBacklight(true);
+}
+
+void logMemory()
+{
+  Serial.printf("Used PSRAM: %d\n", ESP.getPsramSize() - ESP.getFreePsram());
 }
 
 void setup()
