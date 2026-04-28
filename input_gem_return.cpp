@@ -18,7 +18,7 @@ Vec2I _entity_return_on_mouse_click()
       index_y >= 0 && mouse_position_normalized.x >= 0 &&
       mouse_position_normalized.y >= 0)
   {
-    Serial.printf("Returned entity index:[%d][%d]\n", index_x, index_y);
+    //Serial.printf("Returned entity index:[%d][%d]\n", index_x, index_y);
     return (Vec2I){index_x, index_y};
   }
   return (Vec2I){-999, -999};
