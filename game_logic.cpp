@@ -244,13 +244,14 @@ static bool _check_up_down_match(int i, int j)
 
 static void _remove_matches()
 {
-  for (int i = 0; i < MAX_ROWS; i++)
+  for (int i = 0; i < rows; i++)
   {
-    for (int j = 0; j < MAX_COLS; j++)
+    for (int j = 0; j < cols; j++)
     {
       if (get_entity_match_state((Vec2I){i, j}))
       {
         set_entity_type((Vec2I){i, j}, -1);
+        set_entity_match_state((Vec2I){i, j}, false);
       }
     }
   }
@@ -265,37 +266,37 @@ static void _remove_matches()
 static void _find_matches()
 {
   bool match_found = false;
-  for (int i = 0; i < MAX_ROWS; i++)
+  for (int i = 0; i < rows; i++)
   {
-    for (int j = 0; j < MAX_COLS; j++)
+    for (int j = 0; j < cols; j++)
     {
-      if (MAX_ROWS - 2 > i)
+      if (rows - 2 > i)
       {
         // Look for vertical
         if (get_entity_type((Vec2I){i, j}) != -1 && _check_vertical_matches(i, j))
         {
+          if (!match_found)
+          {
+            match_found = true;
+          }
           for (int x = 0; x < 3; x++)
           {
             set_entity_match_state((Vec2I){i + x, j}, true);
-            if (!match_found)
-            {
-              match_found = true;
-            }
           }
         }
       }
-      if (MAX_COLS - 2 > j)
+      if (cols - 2 > j)
       {
         // Look for horizontal
         if (get_entity_type((Vec2I){i, j}) != -1 && _check_horizontal_matches(i, j))
         {
+          if (!match_found)
+          {
+            match_found = true;
+          }
           for (int y = 0; y < 3; y++)
           {
             set_entity_match_state((Vec2I){i, j + y}, true);
-            if (!match_found)
-            {
-              match_found = true;
-            }
           }
         }
       }
@@ -357,6 +358,77 @@ static bool _check_swap_gem_requirement()
                                               _chosen_gems_indexs[0].y) ||
           _match_availability_checker_for_gem(_chosen_gems_indexs[1].x,
                                               _chosen_gems_indexs[1].y));
+}
+
+static void _gem_gravity()
+{
+  Vec2I found_empty_cell_index;
+  int8_t length_empty_cells_vertically = 0;
+  int8_t available_length_to_up = 0;
+  Vec2I empty_cell_at_most_bottom;
+
+  // First we find empty cells (Entity type equals to -1)
+  for (int i = 0; i < rows; i++)
+  {
+    for (int j = 0; j < cols; j++)
+    {
+      /*Checks: I)Is it empty? II)Is it not in border (Since in above there are not any entity to drag)
+      III)If there have an entity to drag (If it has an emptity cell, means we can't reference this empty cell for offsetting the entities above)*/
+      if (get_entity_type((Vec2I){i, j}) == -1 && i > 0 && get_entity_type((Vec2I){i - 1, j}) != -1)
+      {
+        found_empty_cell_index.x = i;
+        found_empty_cell_index.y = j;
+
+        // We will look the vertical direction(down) to length of empty cells in column
+        for (int x = 0; x < rows; x++)
+        {
+          if (found_empty_cell_index.x + x < rows)
+          {
+            if (get_entity_type((Vec2I){found_empty_cell_index.x + x, found_empty_cell_index.y}) == -1)
+            {
+              length_empty_cells_vertically++;
+            }
+            else
+            {
+              break;
+            }
+          }
+          else
+          {
+            break;
+          }
+        }
+        empty_cell_at_most_bottom.x = found_empty_cell_index.x + (length_empty_cells_vertically - 1);
+        empty_cell_at_most_bottom.y = found_empty_cell_index.y;
+        // Serial.printf("Found length for empty cell at: [%d][%d], is: %d\n", found_empty_cell_index.x, found_empty_cell_index.y, length_empty_cells_vertically);
+
+        // We will look up (from the found empty cell) find out how much gem it satisfy to put them down. If we reach to the border we stop
+        for (int x = found_empty_cell_index.x - 1; x >= 0; x--)
+        {
+          if (get_entity_type((Vec2I){found_empty_cell_index.x - 1 - available_length_to_up, found_empty_cell_index.y}) != -1) 
+          available_length_to_up++;
+          else break;
+        }
+
+        Serial.printf("\nfound_empty_cell_index: [%d][%d]\nlength_empty_cells_vertically: %d\navailable_length_to_up: %d\nempty_cell_at_most_bottom: [%d][%d]", found_empty_cell_index.x, found_empty_cell_index.y, length_empty_cells_vertically, available_length_to_up, empty_cell_at_most_bottom.x, empty_cell_at_most_bottom.y);
+
+        // After we found how much gem on above available to offset to down, we will begin to move them bottom
+        for (int x = 0; x < available_length_to_up; x++)
+        {
+          set_entity_type((Vec2I)
+            {empty_cell_at_most_bottom.x /*We go to the most bottom of empty cell in vertical column*/ - x /*And going up in each time*/, empty_cell_at_most_bottom.y}, 
+              get_entity_type((Vec2I){empty_cell_at_most_bottom.x - x - length_empty_cells_vertically /*Takes corresponding gem type based on length*/, empty_cell_at_most_bottom.y}));
+
+          set_entity_type((Vec2I){empty_cell_at_most_bottom.x - x - length_empty_cells_vertically, empty_cell_at_most_bottom.y}, -1);
+          Serial.printf("\nEntity at [%d][%d] changed to -1:", empty_cell_at_most_bottom.x - x - length_empty_cells_vertically, empty_cell_at_most_bottom.y);
+        }
+
+        // At the end since we proceed the empty cell, we reset the values
+        length_empty_cells_vertically = 0;
+        available_length_to_up = 0;
+      }
+    }
+  }
 }
 
 /**
@@ -526,9 +598,7 @@ void logic()
 
     _gem_choser(_returned_entity_index.x, _returned_entity_index.y);
 
-    printf("First gem index:[%d][%d], Second gem index:[%d][%d]\n",
-           _chosen_gems_indexs[0].x, _chosen_gems_indexs[0].y,
-           _chosen_gems_indexs[1].x, _chosen_gems_indexs[1].y);
+    // printf("First gem index:[%d][%d], Second gem index:[%d][%d]\n",_chosen_gems_indexs[0].x, _chosen_gems_indexs[0].y, _chosen_gems_indexs[1].x, _chosen_gems_indexs[1].y);
 
     if (_chosen_gems_indexs[GEM_CHOSEN_COUNT - 1].y != -999)
     {
@@ -553,9 +623,9 @@ void logic()
       _swap_gems_types();
       if (_check_swap_gem_requirement())
       {
-        printf("_check_swap_gem_requirement turned true\n");
         _find_matches();
         _remove_matches();
+        _gem_gravity();
         _reset_chosen_gems_state();
         _refresh_the_screen();
       }
