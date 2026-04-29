@@ -263,7 +263,7 @@ static void _remove_matches()
  * @note It's required to use only when the gem's position, types or any change
  * on board/gems will not happen until the _find_matches() finish
  */
-static void _find_matches()
+static bool _find_matches()
 {
   bool match_found = false;
   for (int i = 0; i < rows; i++)
@@ -302,6 +302,7 @@ static void _find_matches()
       }
     }
   }
+  return match_found;
 }
 
 /**
@@ -454,6 +455,18 @@ static void _swap_gems_types()
                   get_entity_type((Vec2I){_chosen_gems_indexs[1].x, _chosen_gems_indexs[1].y}));
 
   set_entity_type((Vec2I){_chosen_gems_indexs[1].x, _chosen_gems_indexs[1].y}, tempType);
+}
+
+static void _refill_empty_cell(){
+  for(int i = 0; i < rows; i++){
+    for(int j = 0; j < cols; j++){
+      if(get_entity_type(Vec2I{i, j}) == -1){
+        set_entity_type((Vec2I){i, j}, rand() % 4);
+        set_entity_match_state((Vec2I){i, j}, false);
+        _update_gem_position_based_on_cell(i, j); // Updating gem's properties based on it's cell
+      }
+    }
+  }
 }
 
 /**
@@ -623,9 +636,12 @@ void logic()
       _swap_gems_types();
       if (_check_swap_gem_requirement())
       {
-        _find_matches();
-        _remove_matches();
-        _gem_gravity();
+        while(_find_matches()){
+          _remove_matches();
+          _gem_gravity();
+          _refill_empty_cell();
+          _reinitialize_matches();
+        }
         _reset_chosen_gems_state();
         _refresh_the_screen();
       }
