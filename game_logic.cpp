@@ -31,7 +31,7 @@ void set_entity_position(Vec2I entity_position, Vec2I entity_position_new)
         entity_position_new.y;
     return;
   }
-  printf("game_logic.c: row: %d / col: %d cause overflow, can't set "
+  Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't set "
          "entity_position",
          entity_position.x, entity_position.y);
 }
@@ -44,9 +44,9 @@ Vec2I get_entity_position(Vec2I entity_position)
                    _entity_posx_posy[entity_position.x][entity_position.y][1]};
   }
 
-  printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
-         "entity_position",
-         entity_position.x, entity_position.y);
+  Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
+                "entity_position",
+                entity_position.x, entity_position.y);
   return (Vec2I){-1, -1};
 }
 
@@ -58,7 +58,7 @@ void set_cell_position(Vec2I cell_index, Vec2I cell_position_new)
     _cell_posx_posy[cell_index.x][cell_index.y][1] = cell_position_new.y;
     return;
   }
-  printf(
+  Serial.printf(
       "game_logic.c: row: %d / col: %d cause overflow, can't set cell_position",
       cell_index.x, cell_index.y);
 }
@@ -71,9 +71,9 @@ Vec2I get_cell_position(Vec2I cell_position)
                    _cell_posx_posy[cell_position.x][cell_position.y][1]};
   }
 
-  printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
-         "cell_position",
-         cell_position.x, cell_position.y);
+  Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
+                "cell_position",
+                cell_position.x, cell_position.y);
   return (Vec2I){-1, -1};
 }
 
@@ -83,9 +83,9 @@ int16_t get_entity_type(Vec2I entity_index)
   {
     return _entity_type[entity_index.x][entity_index.y];
   }
-  printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
-         "entity_type",
-         entity_index.x, entity_index.y);
+  Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
+                "entity_type",
+                entity_index.x, entity_index.y);
   return -1;
 }
 
@@ -96,7 +96,7 @@ void set_entity_type(Vec2I entity_index, int16_t type_new)
     _entity_type[entity_index.x][entity_index.y] = type_new;
     return;
   }
-  printf(
+  Serial.printf(
       "game_logic.c: row: %d / col: %d cause overflow, can't set entity_type",
       entity_index.x, entity_index.y);
 }
@@ -107,9 +107,9 @@ bool get_entity_match_state(Vec2I entity_index)
   {
     return _entity_match_state[entity_index.x][entity_index.y];
   }
-  printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
-         "entity_match_state",
-         entity_index.x, entity_index.y);
+  Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
+                "entity_match_state",
+                entity_index.x, entity_index.y);
   return -1;
 }
 
@@ -120,7 +120,7 @@ void set_entity_match_state(Vec2I entity_index, bool state_new)
     _entity_match_state[entity_index.x][entity_index.y] = state_new;
     return;
   }
-  printf(
+  Serial.printf(
       "game_logic.c: row: %d / col: %d cause overflow, can't set entity_state",
       entity_index.x, entity_index.y);
 }
@@ -411,7 +411,7 @@ static void _gem_gravity()
           else break;
         }
 
-        Serial.printf("\nfound_empty_cell_index: [%d][%d]\nlength_empty_cells_vertically: %d\navailable_length_to_up: %d\nempty_cell_at_most_bottom: [%d][%d]", found_empty_cell_index.x, found_empty_cell_index.y, length_empty_cells_vertically, available_length_to_up, empty_cell_at_most_bottom.x, empty_cell_at_most_bottom.y);
+        //Serial.printf("\nfound_empty_cell_index: [%d][%d]\nlength_empty_cells_vertically: %d\navailable_length_to_up: %d\nempty_cell_at_most_bottom: [%d][%d]", found_empty_cell_index.x, found_empty_cell_index.y, length_empty_cells_vertically, available_length_to_up, empty_cell_at_most_bottom.x, empty_cell_at_most_bottom.y);
 
         // After we found how much gem on above available to offset to down, we will begin to move them bottom
         for (int x = 0; x < available_length_to_up; x++)
@@ -421,7 +421,7 @@ static void _gem_gravity()
               get_entity_type((Vec2I){empty_cell_at_most_bottom.x - x - length_empty_cells_vertically /*Takes corresponding gem type based on length*/, empty_cell_at_most_bottom.y}));
 
           set_entity_type((Vec2I){empty_cell_at_most_bottom.x - x - length_empty_cells_vertically, empty_cell_at_most_bottom.y}, -1);
-          Serial.printf("\nEntity at [%d][%d] changed to -1:", empty_cell_at_most_bottom.x - x - length_empty_cells_vertically, empty_cell_at_most_bottom.y);
+          //Serial.printf("\nEntity at [%d][%d] changed to -1:", empty_cell_at_most_bottom.x - x - length_empty_cells_vertically, empty_cell_at_most_bottom.y);
         }
 
         // At the end since we proceed the empty cell, we reset the values

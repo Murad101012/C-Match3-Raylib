@@ -9,6 +9,8 @@
             "name": "PlatformIO",
             "includePath": [
                 "/home/darkgreen/Documents/C-Match3/C-Match3-Raylib",
+                "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
+                "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Network/src",
                 "/home/darkgreen/Documents/C-Match3/C-Match3-Raylib/.pio/libdeps/esp32-s3-devkitc-1/GFX Library for Arduino/src",
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src",
@@ -375,7 +377,6 @@
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/LittleFS/src",
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Matter/src",
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/NetBIOS/src",
-                "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Network/src",
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/NetworkClientSecure/src",
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/OpenThread/src",
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/PPP/src",
@@ -390,7 +391,6 @@
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/USB/src",
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src",
-                "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
                 "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Zigbee/src",
                 ""
@@ -399,6 +399,8 @@
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
                     "/home/darkgreen/Documents/C-Match3/C-Match3-Raylib",
+                    "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
+                    "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Network/src",
                     "/home/darkgreen/Documents/C-Match3/C-Match3-Raylib/.pio/libdeps/esp32-s3-devkitc-1/GFX Library for Arduino/src",
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src",
@@ -765,7 +767,6 @@
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/LittleFS/src",
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Matter/src",
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/NetBIOS/src",
-                    "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Network/src",
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/NetworkClientSecure/src",
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/OpenThread/src",
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/PPP/src",
@@ -780,7 +781,6 @@
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/USB/src",
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src",
-                    "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
                     "/home/darkgreen/.platformio/packages/framework-arduinoespressif32/libraries/Zigbee/src",
                     ""
