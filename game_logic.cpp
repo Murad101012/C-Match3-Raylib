@@ -10,16 +10,14 @@
 
 // Properties of general entities
 static int16_t _entity_type[MAX_ROWS][MAX_COLS];
-static int16_t _entity_posx_posy_target[MAX_ROWS][MAX_COLS][2 /*ROWS&COLS*/];
-static int16_t _entity_posx_posy_current[MAX_ROWS][MAX_COLS][2 /*ROWS&COLS*/];
+static Vec2I _entity_posx_posy_target[MAX_ROWS][MAX_COLS];
+static Vec2I _entity_posx_posy_current[MAX_ROWS][MAX_COLS];
 
 // Properties of specifially gem entity
 static bool _entity_match_state[MAX_ROWS][MAX_COLS];
 
 // Properties of Cell
-static int16_t _cell_posx_posy[MAX_ROWS][MAX_COLS][2 /*ROWS&COLS*/];
-
-static int16_t _returned_entity_type_on_mouse_click[2];
+static Vec2I _cell_posx_posy[MAX_ROWS][MAX_COLS];
 
 static Vec2I _chosen_gems_indexs[GEM_CHOSEN_COUNT];
 
@@ -27,23 +25,23 @@ void set_entity_position(Vec2I entity_position, Vec2I entity_position_new)
 {
   if (entity_position.x < rows && entity_position.y < cols)
   {
-    _entity_posx_posy_target[entity_position.x][entity_position.y][0] =
+    _entity_posx_posy_target[entity_position.x][entity_position.y].x =
         entity_position_new.x;
-    _entity_posx_posy_target[entity_position.x][entity_position.y][1] =
+    _entity_posx_posy_target[entity_position.x][entity_position.y].y =
         entity_position_new.y;
     return;
   }
   Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't set "
-         "entity_position",
-         entity_position.x, entity_position.y);
+                "entity_position",
+                entity_position.x, entity_position.y);
 }
 
 Vec2I get_entity_position(Vec2I entity_position)
 {
   if (entity_position.x < rows && entity_position.y < cols)
   {
-    return (Vec2I){_entity_posx_posy_target[entity_position.x][entity_position.y][0],
-                   _entity_posx_posy_target[entity_position.x][entity_position.y][1]};
+    return (Vec2I){_entity_posx_posy_target[entity_position.x][entity_position.y].x,
+                   _entity_posx_posy_target[entity_position.x][entity_position.y].y};
   }
 
   Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
@@ -56,8 +54,8 @@ void set_cell_position(Vec2I cell_index, Vec2I cell_position_new)
 {
   if (cell_index.x < rows && cell_index.y < cols)
   {
-    _cell_posx_posy[cell_index.x][cell_index.y][0] = cell_position_new.x;
-    _cell_posx_posy[cell_index.x][cell_index.y][1] = cell_position_new.y;
+    _cell_posx_posy[cell_index.x][cell_index.y].x = cell_position_new.x;
+    _cell_posx_posy[cell_index.x][cell_index.y].y = cell_position_new.y;
     return;
   }
   Serial.printf(
@@ -69,8 +67,8 @@ Vec2I get_cell_position(Vec2I cell_position)
 {
   if (cell_position.x < rows && cell_position.y < cols)
   {
-    return (Vec2I){_cell_posx_posy[cell_position.x][cell_position.y][0],
-                   _cell_posx_posy[cell_position.x][cell_position.y][1]};
+    return (Vec2I){_cell_posx_posy[cell_position.x][cell_position.y].x,
+                   _cell_posx_posy[cell_position.x][cell_position.y].y};
   }
 
   Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
@@ -408,22 +406,22 @@ static void _gem_gravity()
         // We will look up (from the found empty cell) find out how much gem it satisfy to put them down. If we reach to the border we stop
         for (int x = found_empty_cell_index.x - 1; x >= 0; x--)
         {
-          if (get_entity_type((Vec2I){found_empty_cell_index.x - 1 - available_length_to_up, found_empty_cell_index.y}) != -1) 
-          available_length_to_up++;
-          else break;
+          if (get_entity_type((Vec2I){found_empty_cell_index.x - 1 - available_length_to_up, found_empty_cell_index.y}) != -1)
+            available_length_to_up++;
+          else
+            break;
         }
 
-        //Serial.printf("\nfound_empty_cell_index: [%d][%d]\nlength_empty_cells_vertically: %d\navailable_length_to_up: %d\nempty_cell_at_most_bottom: [%d][%d]", found_empty_cell_index.x, found_empty_cell_index.y, length_empty_cells_vertically, available_length_to_up, empty_cell_at_most_bottom.x, empty_cell_at_most_bottom.y);
+        // Serial.printf("\nfound_empty_cell_index: [%d][%d]\nlength_empty_cells_vertically: %d\navailable_length_to_up: %d\nempty_cell_at_most_bottom: [%d][%d]", found_empty_cell_index.x, found_empty_cell_index.y, length_empty_cells_vertically, available_length_to_up, empty_cell_at_most_bottom.x, empty_cell_at_most_bottom.y);
 
         // After we found how much gem on above available to offset to down, we will begin to move them bottom
         for (int x = 0; x < available_length_to_up; x++)
         {
-          set_entity_type((Vec2I)
-            {empty_cell_at_most_bottom.x /*We go to the most bottom of empty cell in vertical column*/ - x /*And going up in each time*/, empty_cell_at_most_bottom.y}, 
-              get_entity_type((Vec2I){empty_cell_at_most_bottom.x - x - length_empty_cells_vertically /*Takes corresponding gem type based on length*/, empty_cell_at_most_bottom.y}));
+          set_entity_type((Vec2I){empty_cell_at_most_bottom.x /*We go to the most bottom of empty cell in vertical column*/ - x /*And going up in each time*/, empty_cell_at_most_bottom.y},
+                          get_entity_type((Vec2I){empty_cell_at_most_bottom.x - x - length_empty_cells_vertically /*Takes corresponding gem type based on length*/, empty_cell_at_most_bottom.y}));
 
           set_entity_type((Vec2I){empty_cell_at_most_bottom.x - x - length_empty_cells_vertically, empty_cell_at_most_bottom.y}, -1);
-          //Serial.printf("\nEntity at [%d][%d] changed to -1:", empty_cell_at_most_bottom.x - x - length_empty_cells_vertically, empty_cell_at_most_bottom.y);
+          // Serial.printf("\nEntity at [%d][%d] changed to -1:", empty_cell_at_most_bottom.x - x - length_empty_cells_vertically, empty_cell_at_most_bottom.y);
         }
 
         // At the end since we proceed the empty cell, we reset the values
@@ -459,10 +457,14 @@ static void _swap_gems_types()
   set_entity_type((Vec2I){_chosen_gems_indexs[1].x, _chosen_gems_indexs[1].y}, tempType);
 }
 
-static void _refill_empty_cell(){
-  for(int i = 0; i < rows; i++){
-    for(int j = 0; j < cols; j++){
-      if(get_entity_type(Vec2I{i, j}) == -1){
+static void _refill_empty_cell()
+{
+  for (int i = 0; i < rows; i++)
+  {
+    for (int j = 0; j < cols; j++)
+    {
+      if (get_entity_type(Vec2I{i, j}) == -1)
+      {
         set_entity_type((Vec2I){i, j}, rand() % 4);
         set_entity_match_state((Vec2I){i, j}, false);
         _update_gem_position_based_on_cell(i, j); // Updating gem's properties based on it's cell
@@ -638,7 +640,8 @@ void logic()
       _swap_gems_types();
       if (_check_swap_gem_requirement())
       {
-        while(_find_matches()){
+        while (_find_matches())
+        {
           _remove_matches();
           _gem_gravity();
           _refill_empty_cell();
