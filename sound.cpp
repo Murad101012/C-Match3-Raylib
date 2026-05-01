@@ -1,4 +1,5 @@
 #include "WiFi.h"
+#include "esp_wifi.h"
 #define INSTRUMENT_FILE
 #include "tiny_instruments_sf2.h"
 extern "C"
@@ -15,6 +16,10 @@ int16_t audio_buffer[AUDIO_SAMPLES];
 
 WiFiUDP udp;
 const int port = 12345;
+
+static uint32_t last_send_time = 0;
+static uint16_t interval = 23.2;
+static uint32_t current_time_now = millis();
 
 // The Synthesizer instance
 tsf *g_TinySoundFont = nullptr;
@@ -91,6 +96,13 @@ void _render_audio_block(int16_t *output_buffer, int samples_to_render)
 
 bool _send_audio_to_vlc_robust()
 {
+    // Check if at least one device is connected to the AP
+    if (WiFi.softAPgetStationNum() == 0)
+    {
+        return false;
+    }
+
+    // Only render and send if there is a recipient
     _render_audio_block(audio_buffer, AUDIO_SAMPLES);
 
     if (udp.beginPacket("192.168.4.2", port))
@@ -103,7 +115,20 @@ bool _send_audio_to_vlc_robust()
     return false;
 }
 
+void _check_next_audio_send_timer(){
+    current_time_now = millis();
+    if (current_time_now - last_send_time >= interval)
+    {
+        // Attempt to send
+        if (_send_audio_to_vlc_robust())
+        {
+            last_send_time = current_time_now;
+        }
+    }
+}
+
 void _initialize_wifi_ap(){
+    esp_wifi_set_max_tx_power(34);
     WiFi.softAP("ESP_AP", "12345678");
     udp.begin(port);
 }

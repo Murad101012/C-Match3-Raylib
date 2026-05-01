@@ -6,10 +6,12 @@
 #include "game_config.h"
 #include "render.h"
 #include "input_gem_return.h"
+#include "tools.h"
 
 // Properties of general entities
 static int16_t _entity_type[MAX_ROWS][MAX_COLS];
-static int16_t _entity_posx_posy[MAX_ROWS][MAX_COLS][2 /*ROWS&COLS*/];
+static int16_t _entity_posx_posy_target[MAX_ROWS][MAX_COLS][2 /*ROWS&COLS*/];
+static int16_t _entity_posx_posy_current[MAX_ROWS][MAX_COLS][2 /*ROWS&COLS*/];
 
 // Properties of specifially gem entity
 static bool _entity_match_state[MAX_ROWS][MAX_COLS];
@@ -25,9 +27,9 @@ void set_entity_position(Vec2I entity_position, Vec2I entity_position_new)
 {
   if (entity_position.x < rows && entity_position.y < cols)
   {
-    _entity_posx_posy[entity_position.x][entity_position.y][0] =
+    _entity_posx_posy_target[entity_position.x][entity_position.y][0] =
         entity_position_new.x;
-    _entity_posx_posy[entity_position.x][entity_position.y][1] =
+    _entity_posx_posy_target[entity_position.x][entity_position.y][1] =
         entity_position_new.y;
     return;
   }
@@ -40,8 +42,8 @@ Vec2I get_entity_position(Vec2I entity_position)
 {
   if (entity_position.x < rows && entity_position.y < cols)
   {
-    return (Vec2I){_entity_posx_posy[entity_position.x][entity_position.y][0],
-                   _entity_posx_posy[entity_position.x][entity_position.y][1]};
+    return (Vec2I){_entity_posx_posy_target[entity_position.x][entity_position.y][0],
+                   _entity_posx_posy_target[entity_position.x][entity_position.y][1]};
   }
 
   Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
