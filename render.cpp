@@ -3,6 +3,7 @@
 #include "src/display.h"
 #include <esp_heap_caps.h>
 #include <string.h>
+#include "tools.h"
 
 // Prevents calling get_ function twice for both x and y
 static Vec2I cache_entity;

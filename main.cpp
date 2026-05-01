@@ -4,21 +4,20 @@
 #include <stdbool.h>
 #include <Arduino.h>
 
-
 #include "game_logic.h"
 #include "render.h"
 #include "src/display.h"
 #include "sound.h"
+#include "tools.h"
 
-uint32_t last_send_time = 0;
-uint16_t interval = 23.2;
-
+sequence_object *sequence_1;
+sequence_object *sequence_2;
 
 static void _initialize_esp()
 {
   Serial.begin(115200);
-  
-  //delay(1000);
+
+  // delay(1000);
   randomSeed(esp_random());
 
   touch_input_screen.begin(GT911_ADDR1);
@@ -49,23 +48,14 @@ void setup()
   _initialize_audio_engine();
 
   _refresh_the_screen();
+
+  _intializate_sequence();
+
+  sequence_1 = _add_to_sequence(sequence_object{.delay = 0, .function_type = FUNC_SIMPLE, .without_ptr = &_check_next_audio_send_timer});
+  sequence_2 = _add_to_sequence(sequence_object{.delay = 0, .function_type = FUNC_SIMPLE, .without_ptr = &logic});
 }
 
 void loop()
 {
-  logic();
-  uint32_t now = millis();
-  if (now - last_send_time >= interval)
-  {
-    // Attempt to send
-    if (_send_audio_to_vlc_robust())
-    {
-      last_send_time = now;
-    }
-    else
-    {
-      // If it failed, we don't update last_send_time.
-      // We try again as fast as possible in the next loop!
-    }
-  }
+  _check_sequence();
 }
