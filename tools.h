@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "game_config.h"
-#define CUSTOM_INT_ARRAY_LENGTH 5
+#define CUSTOM_INT_ARRAY_LENGTH 8
 
 void _intializate_sequence();
 
@@ -27,10 +27,14 @@ typedef enum
 {
     FUNC_SIMPLE,
     FUNC_WITH_INT_ARRAY,
-    FUNC_WITH_DOUBLE_VEC2I
+    FUNC_WITH_DOUBLE_VEC2I,
+    FUNC_ITSELF
 } func_type_enum;
 
-typedef struct
+typedef void (*sequence_callback)();
+struct sequence_object;
+
+typedef struct sequence_object
 {
     // Variables assigned by developer
     uint16_t delay;
@@ -38,8 +42,9 @@ typedef struct
     union
     {
         void (*without_ptr)();
-        void (*with_int_array)(int16_t *);
-        void (*with_vec2i) (Vec2I, Vec2I);
+        void (*with_int_array)(int *);
+        void (*with_double_vec2i)(Vec2I, Vec2I);
+        void (*with_itself)(sequence_object *);
     };
 
     auto_kill_method_enum auto_kill_method_enum_type;
@@ -48,8 +53,10 @@ typedef struct
     // Variables assigned by runtime in game
     bool active;
     uint32_t next_execute_time;
-    uint32_t auto_kill_method_value_current;
-    int16_t custom_int_array[CUSTOM_INT_ARRAY_LENGTH];
+    uint32_t auto_kill_method_value;
+    int custom_int_array[CUSTOM_INT_ARRAY_LENGTH];
+    sequence_callback on_complete_callbacks[3];
+    uint8_t callback_count;
 } sequence_object;
 
 void _check_sequence();

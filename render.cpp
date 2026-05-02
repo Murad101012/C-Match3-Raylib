@@ -48,7 +48,8 @@ void _draw_board()
       {
         for (int x = cache_cell.x; x < _rectangle_width + cache_cell.x; x++)
         {
-          if (cell[step] != 0x0000){
+          if (cell[step] != 0x0000)
+          {
             test_buffer[y * 480 + x] = cell[step];
           }
           step++;
@@ -66,19 +67,27 @@ void _draw_gems()
     {
       cache_entity_type = get_entity_type((Vec2I){i, j});
 
-      // Ensure the type is valid and within our table bounds
       if (cache_entity_type >= 0 && cache_entity_type < GEM_TYPE_LENGTH)
       {
-        cache_entity = get_entity_position((Vec2I){i, j});
+        cache_entity = get_entity_animation_position((Vec2I){i, j});
         int step = 0;
         const uint16_t *current_gem_sprite = gem_types_table[cache_entity_type];
 
-        for (int y = cache_entity.y; y < cache_entity.y + gem_height; y++)
+        for (int y_offset = 0; y_offset < gem_height; y_offset++)
         {
-          for (int x = cache_entity.x; x < cache_entity.x + gem_width; x++)
+          int draw_y = cache_entity.y + y_offset;
+
+          for (int x_offset = 0; x_offset < gem_width; x_offset++)
           {
-            if (current_gem_sprite[step] != 0x0000){
-              test_buffer[y * 480 + x] = current_gem_sprite[step];
+            int draw_x = cache_entity.x + x_offset;
+
+            // CLIPPING GUARD: Only draw if inside the 480x480 screen
+            if (draw_x >= _board_beginning_position_x && draw_x < 480 && draw_y >= _board_beginning_position_y && draw_y < 480)
+            {
+              if (current_gem_sprite[step] != 0x0000)
+              {
+                test_buffer[draw_y * 480 + draw_x] = current_gem_sprite[step];
+              }
             }
             step++;
           }

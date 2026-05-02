@@ -3,7 +3,7 @@
 #include <HardwareSerial.h>
 #include <esp_random.h>
 
-#define SEQUENCE_LIMIT 30
+#define SEQUENCE_LIMIT 80
 
 static uint32_t current_time;
 
@@ -17,6 +17,7 @@ sequence_object *_add_to_sequence(sequence_object sequence_object)
         {
             _sequence_objects_array[i] = sequence_object;
             _sequence_objects_array[i].active = true;
+            _sequence_objects_array[i].next_execute_time = millis();
             return &_sequence_objects_array[i];
         }
     }
@@ -28,9 +29,18 @@ void _remove_from_sequence(sequence_object *sequence_object)
 {
     if (sequence_object != nullptr)
     {
-        sequence_object->active = false;
+        for (uint8_t i = 0; i < sequence_object->callback_count; i++)
+        {
+            if (sequence_object->on_complete_callbacks[i] != nullptr)
+            {
+                sequence_object->on_complete_callbacks[i]();
+                sequence_object->on_complete_callbacks[i] = nullptr;
+            }
+        }
+        sequence_object->callback_count = 0;
         sequence_object->auto_kill_method_enum_type = NOT_AUTO_KILL_SEQUENCE;
-        sequence_object->auto_kill_method_value_current = 0;
+        sequence_object->auto_kill_method_value = 0;
+        sequence_object->active = false;
     }
 }
 
@@ -43,7 +53,7 @@ void _check_sequence()
         {
             if (_sequence_objects_array[i].next_execute_time <= current_time)
             {
-                _sequence_objects_array[i].next_execute_time = millis() + _sequence_objects_array[i].delay;
+                _sequence_objects_array[i].next_execute_time += _sequence_objects_array[i].delay;
                 switch (_sequence_objects_array[i].function_type)
                 {
                 case FUNC_SIMPLE:
@@ -52,37 +62,40 @@ void _check_sequence()
                 case FUNC_WITH_INT_ARRAY:
                     _sequence_objects_array[i].with_int_array(_sequence_objects_array[i].custom_int_array);
                     break;
+                case FUNC_ITSELF:
+                    _sequence_objects_array[i].with_itself(&_sequence_objects_array[i]);
+                    break;
                 }
 
                 if (_sequence_objects_array[i].auto_kill_method_enum_type != NOT_AUTO_KILL_SEQUENCE)
                 {
                     if (_sequence_objects_array[i].auto_kill_method_enum_type == TIMES_AUTO_KILL_SEQUENCE)
                     {
-                        if (_sequence_objects_array[i].auto_kill_method_value_current >= _sequence_objects_array[i].auto_kill_method_value_target)
+                        if (_sequence_objects_array[i].auto_kill_method_value >= _sequence_objects_array[i].auto_kill_method_value_target)
                         {
                             _remove_from_sequence(&_sequence_objects_array[i]);
                         }
                         else
                         {
-                            _sequence_objects_array[i].auto_kill_method_value_current++;
+                            _sequence_objects_array[i].auto_kill_method_value++;
                         }
                     }
 
                     if (_sequence_objects_array[i].auto_kill_method_enum_type == MILLISECONDS_AUTO_KILL_SEQUENCE)
                     {
-                        if (_sequence_objects_array[i].auto_kill_method_value_current >= _sequence_objects_array[i].auto_kill_method_value_target)
+                        if (_sequence_objects_array[i].auto_kill_method_value >= _sequence_objects_array[i].auto_kill_method_value_target)
                         {
                             _remove_from_sequence(&_sequence_objects_array[i]);
                         }
                         else
                         {
-                            _sequence_objects_array[i].auto_kill_method_value_current += _sequence_objects_array[i].delay;
+                            _sequence_objects_array[i].auto_kill_method_value += _sequence_objects_array[i].delay;
                         }
                     }
 
                     if (_sequence_objects_array[i].auto_kill_method_enum_type == CONDITION_MET_AUTO_KILL_SEQUENCE)
                     {
-                        if (_sequence_objects_array[i].auto_kill_method_value_current == true)
+                        if (_sequence_objects_array[i].auto_kill_method_value == true)
                         {
                             _remove_from_sequence(&_sequence_objects_array[i]);
                         }
@@ -102,7 +115,7 @@ void _intializate_sequence()
         _sequence_objects_array[i].delay = 0;
         _sequence_objects_array[i].active = false;
         _sequence_objects_array[i].auto_kill_method_enum_type = NOT_AUTO_KILL_SEQUENCE;
-        _sequence_objects_array[i].auto_kill_method_value_current = 0;
+        _sequence_objects_array[i].auto_kill_method_value = 0;
         _sequence_objects_array[i].auto_kill_method_value_target = 0;
     }
 }

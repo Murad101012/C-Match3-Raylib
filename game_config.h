@@ -44,8 +44,18 @@ extern uint16_t _rectangle_color;
 extern int8_t gem_width;
 extern int8_t gem_height;
 
+typedef enum
+{
+    INPUT_WAITING,
+    INPUT_PREVENT,
+    GEM_SWAPPING_BY_PLAYER,
+    GEM_FALLING
+} game_state;
+extern game_state current_game_state;
+
 extern const uint16_t *gem_types_table[GEM_TYPE_LENGTH];
 extern const uint16_t *cell_table[1];
+extern uint8_t gem_swap_animation_time_to_complete;
 
 typedef enum
 {
