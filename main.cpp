@@ -12,6 +12,7 @@
 
 sequence_object *sequence_1;
 sequence_object *sequence_2;
+sequence_object *sequence_3;
 
 static void _initialize_esp()
 {
@@ -36,6 +37,8 @@ void setup()
 {
   _initialize_esp();
 
+  _intializate_sequence();
+
   // Preparing board and random gems
   _initialize_game();
 
@@ -47,12 +50,9 @@ void setup()
 
   _initialize_audio_engine();
 
-  _refresh_the_screen();
-
-  _intializate_sequence();
-
-  sequence_1 = _add_to_sequence(sequence_object{.delay = 0, .function_type = FUNC_SIMPLE, .without_ptr = &_check_next_audio_send_timer});
+  //sequence_1 = _add_to_sequence(sequence_object{.delay = 0, .function_type = FUNC_SIMPLE, .without_ptr = &_check_next_audio_send_timer});
   sequence_2 = _add_to_sequence(sequence_object{.delay = 0, .function_type = FUNC_SIMPLE, .without_ptr = &logic});
+  sequence_3 = _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_SIMPLE, .without_ptr = &_refresh_the_screen});
 }
 
 void loop()

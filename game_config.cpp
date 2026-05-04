@@ -8,7 +8,6 @@ uint8_t cols = 7;
 
 uint16_t _window_width = 700;
 uint16_t _window_height = 700;
-int8_t _target_fps = 30;
 uint16_t _background_color = BLACK;
 
 int16_t _board_beginning_position_x = 15;
@@ -22,6 +21,10 @@ uint16_t _rectangle_color = GREEN;
 
 int8_t gem_width = 32;
 int8_t gem_height = 32;
+
+game_state current_game_state = INPUT_WAITING;
+
+uint8_t gem_swap_animation_time_to_complete = 150;
 
 uint16_t _gem_type_color[] = {RED, BLUE, DARK_GREEN, GOLD, PURPLE};
 

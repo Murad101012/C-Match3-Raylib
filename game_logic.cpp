@@ -10,24 +10,32 @@
 
 // Properties of general entities
 static int16_t _entity_type[MAX_ROWS][MAX_COLS];
-static Vec2I _entity_posx_posy_target[MAX_ROWS][MAX_COLS];
-static Vec2I _entity_posx_posy_current[MAX_ROWS][MAX_COLS];
+static Vec2I _entity_posx_posy_absolute[MAX_ROWS][MAX_COLS];
+static Vec2I _entity_posx_posy_animation[MAX_ROWS][MAX_COLS];
 
 // Properties of specifially gem entity
 static bool _entity_match_state[MAX_ROWS][MAX_COLS];
+
+static bool _entities_in_animation[MAX_ROWS][MAX_COLS];
 
 // Properties of Cell
 static Vec2I _cell_posx_posy[MAX_ROWS][MAX_COLS];
 
 static Vec2I _chosen_gems_indexs[GEM_CHOSEN_COUNT];
 
-void set_entity_position(Vec2I entity_position, Vec2I entity_position_new)
+static const uint8_t pixel_move_step_animation = 1;
+
+static void _after_gem_animation_end();
+
+static sequence_object *checking_if_all_animation_states_are_false = nullptr;
+
+void set_entity_absolute_position(Vec2I entity_position, Vec2I entity_position_new)
 {
   if (entity_position.x < rows && entity_position.y < cols)
   {
-    _entity_posx_posy_target[entity_position.x][entity_position.y].x =
+    _entity_posx_posy_absolute[entity_position.x][entity_position.y].x =
         entity_position_new.x;
-    _entity_posx_posy_target[entity_position.x][entity_position.y].y =
+    _entity_posx_posy_absolute[entity_position.x][entity_position.y].y =
         entity_position_new.y;
     return;
   }
@@ -36,12 +44,41 @@ void set_entity_position(Vec2I entity_position, Vec2I entity_position_new)
                 entity_position.x, entity_position.y);
 }
 
-Vec2I get_entity_position(Vec2I entity_position)
+Vec2I get_entity_absolute_position(Vec2I entity_position)
 {
   if (entity_position.x < rows && entity_position.y < cols)
   {
-    return (Vec2I){_entity_posx_posy_target[entity_position.x][entity_position.y].x,
-                   _entity_posx_posy_target[entity_position.x][entity_position.y].y};
+    return (Vec2I){_entity_posx_posy_absolute[entity_position.x][entity_position.y].x,
+                   _entity_posx_posy_absolute[entity_position.x][entity_position.y].y};
+  }
+
+  Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
+                "entity_position",
+                entity_position.x, entity_position.y);
+  return (Vec2I){-1, -1};
+}
+
+void set_entity_animation_position(Vec2I entity_position, Vec2I entity_position_new)
+{
+  if (entity_position.x < rows && entity_position.y < cols)
+  {
+    _entity_posx_posy_animation[entity_position.x][entity_position.y].x =
+        entity_position_new.x;
+    _entity_posx_posy_animation[entity_position.x][entity_position.y].y =
+        entity_position_new.y;
+    return;
+  }
+  Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't set "
+                "entity_position",
+                entity_position.x, entity_position.y);
+}
+
+Vec2I get_entity_animation_position(Vec2I entity_position)
+{
+  if (entity_position.x < rows && entity_position.y < cols)
+  {
+    return (Vec2I){_entity_posx_posy_animation[entity_position.x][entity_position.y].x,
+                   _entity_posx_posy_animation[entity_position.x][entity_position.y].y};
   }
 
   Serial.printf("game_logic.c: row: %d / col: %d cause overflow, can't return "
@@ -61,6 +98,97 @@ void set_cell_position(Vec2I cell_index, Vec2I cell_position_new)
   Serial.printf(
       "game_logic.c: row: %d / col: %d cause overflow, can't set cell_position",
       cell_index.x, cell_index.y);
+}
+
+void set_animation_state(Vec2I entity_index, bool state)
+{
+  _entities_in_animation[entity_index.x][entity_index.y] = state;
+}
+
+bool get_animation_state(Vec2I entity_index)
+{
+  return _entities_in_animation[entity_index.x][entity_index.y];
+}
+
+bool check_all_animation_states_are_false()
+{
+  for (uint8_t i = 0; i < rows; i++)
+  {
+    for (uint8_t j = 0; j < cols; j++)
+    {
+      if (get_animation_state(Vec2I{i, j}))
+      {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+void check_all_animation_states_are_false_for_sequence_object(sequence_object *self)
+{
+  if (!self->auto_kill_method_value)
+  {
+    self->auto_kill_method_value = check_all_animation_states_are_false();
+    if (self->auto_kill_method_value)
+    {
+      checking_if_all_animation_states_are_false = nullptr;
+    }
+  }
+}
+
+/**
+ * @brief Set the entity position by pixel animation object
+ * custom_int_array mapping:
+ * [0,1] = Entity Index (Grid X, Y)
+ * [2,3] = Target Position (Pixel X, Y)
+ * [4]   = Elapsed Time (ms)
+ * [5]   = Target Time to reach (ms) - Added as per your request
+ * @param self
+ */
+void set_entity_position_by_pixel_animation(sequence_object *self)
+{
+  Vec2I entity_index = {self->custom_int_array[0], self->custom_int_array[1]};
+  Vec2I target = {self->custom_int_array[2], self->custom_int_array[3]};
+
+  // Guard against division by zero if target time isn't set
+  float target_time = (float)self->custom_int_array[5];
+  if (target_time <= 0)
+    target_time = 200.0f;
+
+  if (entity_index.x < rows && entity_index.y < cols)
+  {
+    // 1. Increment elapsed time by the object's delay
+    self->custom_int_array[4] += self->delay;
+
+    // 2. Calculate t (normalized 0.0 to 1.0)
+    float t = (float)self->custom_int_array[4] / target_time;
+
+    // 3. Get current visual position to calculate the delta
+    Vec2I current_visual = get_entity_animation_position(entity_index);
+
+    // 4. Apply your Lerp function for both axes
+    set_entity_animation_position(entity_index, Vec2I{Lerp((float)current_visual.x, (float)target.x, t), Lerp((float)current_visual.y, (float)target.y, t)});
+
+    // 5. Finalize when t reaches 1.0
+    if (t >= 1.0f)
+    {
+      set_entity_animation_position(entity_index, target);
+      set_animation_state(Vec2I{entity_index.x, entity_index.y}, false);
+
+      // Signal CONDITION_MET_AUTO_KILL_SEQUENCE
+      self->auto_kill_method_value = true;
+    }
+    else
+    {
+      set_animation_state(Vec2I{entity_index.x, entity_index.y}, true);
+    }
+    return;
+  }
+
+  Serial.printf(
+      "game_logic.c: row: %d / col: %d cause overflow, can't set cell_position",
+      entity_index.x, entity_index.y);
 }
 
 Vec2I get_cell_position(Vec2I cell_position)
@@ -125,10 +253,11 @@ void set_entity_match_state(Vec2I entity_index, bool state_new)
       entity_index.x, entity_index.y);
 }
 
-void _update_gem_position_based_on_cell(int i, int j)
+void _update_entity_position_based_on_cell(int i, int j)
 {
   Vec2I cell_position_cache = get_cell_position(Vec2I(i, j));
-  set_entity_position((Vec2I){i, j}, (Vec2I){cell_position_cache.x + _rectangle_width / 4, cell_position_cache.y + _rectangle_height / 4});
+  set_entity_absolute_position((Vec2I){i, j}, (Vec2I){cell_position_cache.x + _rectangle_width / 4, cell_position_cache.y + _rectangle_height / 4});
+  set_entity_animation_position((Vec2I){i, j}, (Vec2I){cell_position_cache.x + _rectangle_width / 4, cell_position_cache.y + _rectangle_height / 4});
 }
 
 /**
@@ -361,12 +490,52 @@ static bool _check_swap_gem_requirement()
                                               _chosen_gems_indexs[1].y));
 }
 
+static void _swap_entity_position_animation(Vec2I first_entity_index, Vec2I second_entity_index)
+{
+  Vec2I first_gem_position = get_entity_animation_position(first_entity_index);
+  Vec2I second_gem_position = get_entity_animation_position(second_entity_index);
+  _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_ITSELF, .with_itself = &set_entity_position_by_pixel_animation, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .custom_int_array = {first_entity_index.x, first_entity_index.y, second_gem_position.x, second_gem_position.y, 0, gem_swap_animation_time_to_complete}});
+  _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_ITSELF, .with_itself = &set_entity_position_by_pixel_animation, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .custom_int_array = {second_entity_index.x, second_entity_index.y, first_gem_position.x, first_gem_position.y, 0, gem_swap_animation_time_to_complete}});
+
+  if (checking_if_all_animation_states_are_false == nullptr || !checking_if_all_animation_states_are_false->active)
+  {
+    checking_if_all_animation_states_are_false = _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_ITSELF, .with_itself = &check_all_animation_states_are_false_for_sequence_object, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .on_complete_callbacks = {_after_gem_animation_end}, .callback_count = 1});
+  }
+
+  // Serial.printf("Swapping entities with animation: 1)entity[%d][%d] - type: %d, 2)entity[%d][%d] - type: %d\n", first_entity_index.x, first_entity_index.y, get_entity_type(Vec2I{first_entity_index.x, first_entity_index.y}), second_entity_index.x, second_entity_index.y, get_entity_type(Vec2I{second_entity_index.x, second_entity_index.y}));
+}
+
+static void _swap_entity_types_and_positions(Vec2I first_entity_index, Vec2I second_entity_index)
+{
+  // Taking the type of first element
+  int16_t tempType = get_entity_type(first_entity_index);
+
+  // Then swapping them
+  set_entity_type(first_entity_index, get_entity_type(second_entity_index));
+
+  set_entity_type(second_entity_index, tempType);
+
+  // Then we change their position
+  //  Taking the position of first element
+  Vec2I tempPosition = get_entity_absolute_position(first_entity_index);
+
+  // Then swapping them
+  set_entity_animation_position(first_entity_index, get_entity_absolute_position(second_entity_index));
+
+  set_entity_animation_position(second_entity_index, tempPosition);
+
+  _swap_entity_position_animation(first_entity_index, second_entity_index);
+}
+
 static void _gem_gravity()
 {
+  current_game_state = GEM_FALLING;
+
   Vec2I found_empty_cell_index;
   int8_t length_empty_cells_vertically = 0;
   int8_t available_length_to_up = 0;
   Vec2I empty_cell_at_most_bottom;
+  bool found_an_entity_to_animate_for_gravity = false;
 
   // First we find empty cells (Entity type equals to -1)
   for (int i = 0; i < rows; i++)
@@ -379,6 +548,7 @@ static void _gem_gravity()
       {
         found_empty_cell_index.x = i;
         found_empty_cell_index.y = j;
+        found_an_entity_to_animate_for_gravity = true;
 
         // We will look the vertical direction(down) to length of empty cells in column
         for (int x = 0; x < rows; x++)
@@ -417,11 +587,8 @@ static void _gem_gravity()
         // After we found how much gem on above available to offset to down, we will begin to move them bottom
         for (int x = 0; x < available_length_to_up; x++)
         {
-          set_entity_type((Vec2I){empty_cell_at_most_bottom.x /*We go to the most bottom of empty cell in vertical column*/ - x /*And going up in each time*/, empty_cell_at_most_bottom.y},
-                          get_entity_type((Vec2I){empty_cell_at_most_bottom.x - x - length_empty_cells_vertically /*Takes corresponding gem type based on length*/, empty_cell_at_most_bottom.y}));
-
-          set_entity_type((Vec2I){empty_cell_at_most_bottom.x - x - length_empty_cells_vertically, empty_cell_at_most_bottom.y}, -1);
-          // Serial.printf("\nEntity at [%d][%d] changed to -1:", empty_cell_at_most_bottom.x - x - length_empty_cells_vertically, empty_cell_at_most_bottom.y);
+          // Serial.print("_gem_gravity() calling swapping for next gems: ");
+          _swap_entity_types_and_positions((Vec2I){empty_cell_at_most_bottom.x /*We go to the most bottom of empty cell in vertical column*/ - x /*And going up in each time*/, empty_cell_at_most_bottom.y}, (Vec2I){empty_cell_at_most_bottom.x - x - length_empty_cells_vertically, empty_cell_at_most_bottom.y});
         }
 
         // At the end since we proceed the empty cell, we reset the values
@@ -429,6 +596,12 @@ static void _gem_gravity()
         available_length_to_up = 0;
       }
     }
+  }
+
+  if (!found_an_entity_to_animate_for_gravity)
+  {
+    Serial.print("_after_gem_animation_end calls by _gem_gravity()\n");
+    _after_gem_animation_end();
   }
 }
 
@@ -444,19 +617,6 @@ static void _reset_chosen_gems_state()
   }
 }
 
-static void _swap_gems_types()
-{
-  // Taking the type of first element
-  int16_t tempType =
-      get_entity_type((Vec2I){_chosen_gems_indexs[0].x, _chosen_gems_indexs[0].y});
-
-  // Then swapping them
-  set_entity_type((Vec2I){_chosen_gems_indexs[0].x, _chosen_gems_indexs[0].y},
-                  get_entity_type((Vec2I){_chosen_gems_indexs[1].x, _chosen_gems_indexs[1].y}));
-
-  set_entity_type((Vec2I){_chosen_gems_indexs[1].x, _chosen_gems_indexs[1].y}, tempType);
-}
-
 static void _refill_empty_cell()
 {
   for (int i = 0; i < rows; i++)
@@ -467,7 +627,21 @@ static void _refill_empty_cell()
       {
         set_entity_type((Vec2I){i, j}, rand() % 4);
         set_entity_match_state((Vec2I){i, j}, false);
-        _update_gem_position_based_on_cell(i, j); // Updating gem's properties based on it's cell
+        _update_entity_position_based_on_cell(i, j); // Updating gem's properties based on it's cell
+
+        Vec2I entity_beginning_animation_position = get_entity_absolute_position(Vec2I{i, j});
+        entity_beginning_animation_position.y = -100;
+
+        set_entity_animation_position(Vec2I{i, j}, entity_beginning_animation_position);
+
+        Vec2I entity_end_animation_position = get_entity_absolute_position(Vec2I{i, j});
+
+        _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_ITSELF, .with_itself = &set_entity_position_by_pixel_animation, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .custom_int_array = {i, j, entity_end_animation_position.x, entity_end_animation_position.y, 0, gem_swap_animation_time_to_complete}});
+
+        if (checking_if_all_animation_states_are_false == nullptr || !checking_if_all_animation_states_are_false->active)
+        {
+          checking_if_all_animation_states_are_false = _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_ITSELF, .with_itself = &check_all_animation_states_are_false_for_sequence_object, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .on_complete_callbacks = {_after_gem_animation_end}, .callback_count = 1});
+        }
       }
     }
   }
@@ -579,7 +753,10 @@ void _initialize_game()
       // GEMS section
       set_entity_type((Vec2I){i, j}, rand() % 4);
       set_entity_match_state((Vec2I){i, j}, false);
-      _update_gem_position_based_on_cell(i, j); // Updating gem's properties based on it's cell
+      _update_entity_position_based_on_cell(i, j); // Updating gem's properties based on it's cell
+
+      // Clearing the junk values
+      _entities_in_animation[i][j] = false;
     }
 
     _current_board_x_position = _board_beginning_position_x;
@@ -595,11 +772,55 @@ void _initialize_game()
   _reinitialize_matches();
 }
 
+static void _after_gem_animation_end()
+{
+  Serial.printf("After_gem_animation_end called and current_game_state is: %d\n", current_game_state);
+  if (current_game_state == GEM_SWAPPING_BY_PLAYER)
+  {
+    // Serial.print("GEM_SWAPPING_BY_PLAYER is true\n");
+    if (_check_swap_gem_requirement())
+    {
+      // Serial.print("Found matched gems when player swapped the gems\n");
+      _find_matches();
+      _remove_matches();
+      _gem_gravity();
+      _refill_empty_cell();
+      _reset_chosen_gems_state();
+    }
+    else
+    {
+      // We revert swap of gems, since they doesn't meet the require for
+      // swapping gems (E.g, the match didn't happen when player swap those
+      // gems)
+      _swap_entity_types_and_positions(_chosen_gems_indexs[0], _chosen_gems_indexs[1]);
+      current_game_state = INPUT_WAITING;
+      _reset_chosen_gems_state();
+      // Serial.print("Couldn't find matches, reverted\n");
+    }
+  }
+  else if (current_game_state == GEM_FALLING)
+  {
+    // Serial.print("GEM_FALLING is true\n");
+    if (_find_matches())
+    {
+      _remove_matches();
+      _gem_gravity();
+      _refill_empty_cell();
+      // Serial.print("Find new matched after player swapped and gem's down\n");
+    }
+    else
+    {
+      // Serial.print("Couldn't find new matches after player swapped gem and gems falled\n");
+      current_game_state = INPUT_WAITING;
+    }
+  }
+}
+
 void logic()
 {
   touch_input_screen.read();
 
-  if (touch_input_screen.isTouched)
+  if (touch_input_screen.isTouched && current_game_state == INPUT_WAITING)
   {
     Vec2I _returned_entity_index = _entity_return_on_mouse_click();
 
@@ -607,7 +828,7 @@ void logic()
       gem where we assume it's outside of the board or a empty cell where not
       gem available (marked as gem.type = -1);*/
     if (_returned_entity_index.x == -999 ||
-        _returned_entity_index.x == -1)
+        _returned_entity_index.x == -1 || get_entity_type(_returned_entity_index) == -1 || get_entity_type(_returned_entity_index) == -999)
     {
       _reset_chosen_gems_state();
       return;
@@ -637,27 +858,8 @@ void logic()
         return;
       }
 
-      _swap_gems_types();
-      if (_check_swap_gem_requirement())
-      {
-        while (_find_matches())
-        {
-          _remove_matches();
-          _gem_gravity();
-          _refill_empty_cell();
-          _reinitialize_matches();
-        }
-        _reset_chosen_gems_state();
-        _refresh_the_screen();
-      }
-      else
-      {
-        // We revert swap of gems, since they doesn't meet the require for
-        // swapping gems (E.g, the match didn't happen when player swap those
-        // gems)
-        _swap_gems_types();
-        _reset_chosen_gems_state();
-      }
+      current_game_state = GEM_SWAPPING_BY_PLAYER;
+      _swap_entity_types_and_positions(_chosen_gems_indexs[0], _chosen_gems_indexs[1]);
     }
   }
 }
