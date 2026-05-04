@@ -22,11 +22,11 @@ uint16_t _rectangle_color = GREEN;
 int8_t gem_width = 32;
 int8_t gem_height = 32;
 
+uint16_t targeted_frame_rate = 1;
+
 game_state current_game_state = INPUT_WAITING;
 
 uint8_t gem_swap_animation_time_to_complete = 150;
-
-uint16_t _gem_type_color[] = {RED, BLUE, DARK_GREEN, GOLD, PURPLE};
 
 const uint16_t *gem_types_table[GEM_TYPE_LENGTH] = {
     gem_red,
