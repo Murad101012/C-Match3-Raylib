@@ -169,12 +169,16 @@ void set_entity_position_by_pixel_animation(sequence_object *self)
 
     // 4. Apply your Lerp function for both axes
     set_entity_animation_position(entity_index, Vec2I{Lerp((float)current_visual.x, (float)target.x, t), Lerp((float)current_visual.y, (float)target.y, t)});
+    //Serial.printf("t: %f\n", t);
 
-    // 5. Finalize when t reaches 1.0
+    // 5. Finalize when t reaches 1.0 (offset to 0.97f)
     if (t >= 1.0f)
     {
+      //Serial.printf("t is: %, so moved the position to target\n", t);
       set_entity_animation_position(entity_index, target);
       set_animation_state(Vec2I{entity_index.x, entity_index.y}, false);
+      _refresh_the_screen_dirty();
+      _remove_entity_dirty(entity_index);
 
       // Signal CONDITION_MET_AUTO_KILL_SEQUENCE
       self->auto_kill_method_value = true;
@@ -494,12 +498,14 @@ static void _swap_entity_position_animation(Vec2I first_entity_index, Vec2I seco
 {
   Vec2I first_gem_position = get_entity_animation_position(first_entity_index);
   Vec2I second_gem_position = get_entity_animation_position(second_entity_index);
-  _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_ITSELF, .with_itself = &set_entity_position_by_pixel_animation, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .custom_int_array = {first_entity_index.x, first_entity_index.y, second_gem_position.x, second_gem_position.y, 0, gem_swap_animation_time_to_complete}});
-  _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_ITSELF, .with_itself = &set_entity_position_by_pixel_animation, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .custom_int_array = {second_entity_index.x, second_entity_index.y, first_gem_position.x, first_gem_position.y, 0, gem_swap_animation_time_to_complete}});
+  _add_to_sequence(sequence_object{.delay = targeted_frame_rate, .function_type = FUNC_ITSELF, .with_itself = &set_entity_position_by_pixel_animation, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .custom_int_array = {first_entity_index.x, first_entity_index.y, second_gem_position.x, second_gem_position.y, 0, gem_swap_animation_time_to_complete}});
+  _add_to_sequence(sequence_object{.delay = targeted_frame_rate, .function_type = FUNC_ITSELF, .with_itself = &set_entity_position_by_pixel_animation, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .custom_int_array = {second_entity_index.x, second_entity_index.y, first_gem_position.x, first_gem_position.y, 0, gem_swap_animation_time_to_complete}});
+  _add_entity_dirty(first_entity_index);
+  _add_entity_dirty(second_entity_index);
 
   if (checking_if_all_animation_states_are_false == nullptr || !checking_if_all_animation_states_are_false->active)
   {
-    checking_if_all_animation_states_are_false = _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_ITSELF, .with_itself = &check_all_animation_states_are_false_for_sequence_object, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .on_complete_callbacks = {_after_gem_animation_end}, .callback_count = 1});
+    checking_if_all_animation_states_are_false = _add_to_sequence(sequence_object{.delay = targeted_frame_rate, .function_type = FUNC_ITSELF, .with_itself = &check_all_animation_states_are_false_for_sequence_object, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .on_complete_callbacks = {_after_gem_animation_end}, .callback_count = 1});
   }
 
   // Serial.printf("Swapping entities with animation: 1)entity[%d][%d] - type: %d, 2)entity[%d][%d] - type: %d\n", first_entity_index.x, first_entity_index.y, get_entity_type(Vec2I{first_entity_index.x, first_entity_index.y}), second_entity_index.x, second_entity_index.y, get_entity_type(Vec2I{second_entity_index.x, second_entity_index.y}));
@@ -600,7 +606,6 @@ static void _gem_gravity()
 
   if (!found_an_entity_to_animate_for_gravity)
   {
-    Serial.print("_after_gem_animation_end calls by _gem_gravity()\n");
     _after_gem_animation_end();
   }
 }
@@ -636,11 +641,11 @@ static void _refill_empty_cell()
 
         Vec2I entity_end_animation_position = get_entity_absolute_position(Vec2I{i, j});
 
-        _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_ITSELF, .with_itself = &set_entity_position_by_pixel_animation, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .custom_int_array = {i, j, entity_end_animation_position.x, entity_end_animation_position.y, 0, gem_swap_animation_time_to_complete}});
-
+        _add_to_sequence(sequence_object{.delay = targeted_frame_rate, .function_type = FUNC_ITSELF, .with_itself = &set_entity_position_by_pixel_animation, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .custom_int_array = {i, j, entity_end_animation_position.x, entity_end_animation_position.y, 0, gem_swap_animation_time_to_complete}});
+        _add_entity_dirty((Vec2I){i, j});
         if (checking_if_all_animation_states_are_false == nullptr || !checking_if_all_animation_states_are_false->active)
         {
-          checking_if_all_animation_states_are_false = _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_ITSELF, .with_itself = &check_all_animation_states_are_false_for_sequence_object, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .on_complete_callbacks = {_after_gem_animation_end}, .callback_count = 1});
+          checking_if_all_animation_states_are_false = _add_to_sequence(sequence_object{.delay = targeted_frame_rate, .function_type = FUNC_ITSELF, .with_itself = &check_all_animation_states_are_false_for_sequence_object, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .on_complete_callbacks = {_after_gem_animation_end}, .callback_count = 1});
         }
       }
     }
@@ -774,7 +779,6 @@ void _initialize_game()
 
 static void _after_gem_animation_end()
 {
-  Serial.printf("After_gem_animation_end called and current_game_state is: %d\n", current_game_state);
   if (current_game_state == GEM_SWAPPING_BY_PLAYER)
   {
     // Serial.print("GEM_SWAPPING_BY_PLAYER is true\n");

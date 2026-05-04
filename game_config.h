@@ -44,6 +44,8 @@ extern uint16_t _rectangle_color;
 extern int8_t gem_width;
 extern int8_t gem_height;
 
+extern uint16_t targeted_frame_rate;
+
 typedef enum
 {
     INPUT_WAITING,

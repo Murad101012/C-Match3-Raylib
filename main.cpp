@@ -46,13 +46,13 @@ void setup()
   initialize_render();
 
   // Creating WiFi_AP
-  _initialize_wifi_ap();
+  //_initialize_wifi_ap();
 
-  _initialize_audio_engine();
+  //_initialize_audio_engine();
 
   //sequence_1 = _add_to_sequence(sequence_object{.delay = 0, .function_type = FUNC_SIMPLE, .without_ptr = &_check_next_audio_send_timer});
   sequence_2 = _add_to_sequence(sequence_object{.delay = 0, .function_type = FUNC_SIMPLE, .without_ptr = &logic});
-  sequence_3 = _add_to_sequence(sequence_object{.delay = 16, .function_type = FUNC_SIMPLE, .without_ptr = &_refresh_the_screen});
+  sequence_3 = _add_to_sequence(sequence_object{.delay = targeted_frame_rate, .function_type = FUNC_SIMPLE, .without_ptr = &_refresh_the_screen_dirty});
 }
 
 void loop()
