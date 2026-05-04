@@ -51,7 +51,8 @@ typedef enum
     INPUT_WAITING,
     INPUT_PREVENT,
     GEM_SWAPPING_BY_PLAYER,
-    GEM_FALLING
+    GEM_FALLING,
+    GEM_REFILLING
 } game_state;
 extern game_state current_game_state;
 

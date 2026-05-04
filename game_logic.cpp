@@ -624,6 +624,7 @@ static void _reset_chosen_gems_state()
 
 static void _refill_empty_cell()
 {
+  current_game_state = GEM_REFILLING;
   for (int i = 0; i < rows; i++)
   {
     for (int j = 0; j < cols; j++)
@@ -643,7 +644,7 @@ static void _refill_empty_cell()
 
         _add_to_sequence(sequence_object{.delay = targeted_frame_rate, .function_type = FUNC_ITSELF, .with_itself = &set_entity_position_by_pixel_animation, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .custom_int_array = {i, j, entity_end_animation_position.x, entity_end_animation_position.y, 0, gem_swap_animation_time_to_complete}});
         _add_entity_dirty((Vec2I){i, j});
-        if (checking_if_all_animation_states_are_false == nullptr || !checking_if_all_animation_states_are_false->active)
+        if (checking_if_all_animation_states_are_false == nullptr || !checking_if_all_animation_states_are_false->active || checking_if_all_animation_states_are_false->auto_kill_method_value == true)
         {
           checking_if_all_animation_states_are_false = _add_to_sequence(sequence_object{.delay = targeted_frame_rate, .function_type = FUNC_ITSELF, .with_itself = &check_all_animation_states_are_false_for_sequence_object, .auto_kill_method_enum_type = CONDITION_MET_AUTO_KILL_SEQUENCE, .on_complete_callbacks = {_after_gem_animation_end}, .callback_count = 1});
         }
@@ -802,7 +803,7 @@ static void _after_gem_animation_end()
       // Serial.print("Couldn't find matches, reverted\n");
     }
   }
-  else if (current_game_state == GEM_FALLING)
+  else if (current_game_state == GEM_FALLING || current_game_state == GEM_REFILLING)
   {
     // Serial.print("GEM_FALLING is true\n");
     if (_find_matches())

@@ -12,7 +12,17 @@
 
 sequence_object *sequence_1;
 sequence_object *sequence_2;
-sequence_object *sequence_3;
+
+TaskHandle_t AudioTask;
+
+void AudioLoop(void *pvParameters)
+{
+  for (;;)
+  {
+    _check_next_audio_send_timer();
+    vTaskDelay(1);
+  }
+}
 
 static void _initialize_esp()
 {
@@ -46,13 +56,22 @@ void setup()
   initialize_render();
 
   // Creating WiFi_AP
-  //_initialize_wifi_ap();
+  _initialize_wifi_ap();
 
-  //_initialize_audio_engine();
+  _initialize_audio_engine();
 
-  //sequence_1 = _add_to_sequence(sequence_object{.delay = 0, .function_type = FUNC_SIMPLE, .without_ptr = &_check_next_audio_send_timer});
-  sequence_2 = _add_to_sequence(sequence_object{.delay = 0, .function_type = FUNC_SIMPLE, .without_ptr = &logic});
-  sequence_3 = _add_to_sequence(sequence_object{.delay = targeted_frame_rate, .function_type = FUNC_SIMPLE, .without_ptr = &_refresh_the_screen_dirty});
+  xTaskCreatePinnedToCore(
+      AudioLoop,   /* Task function */
+      "AudioTask", /* Name */
+      10000,       /* Stack size */
+      NULL,        /* Parameters */
+      1,           /* Priority (High) */
+      &AudioTask,  /* Handle */
+      0            /* Core 0 */
+  );
+
+  sequence_1 = _add_to_sequence(sequence_object{.delay = 0, .function_type = FUNC_SIMPLE, .without_ptr = &logic});
+  sequence_2 = _add_to_sequence(sequence_object{.delay = targeted_frame_rate, .function_type = FUNC_SIMPLE, .without_ptr = &_refresh_the_screen_dirty});
 }
 
 void loop()

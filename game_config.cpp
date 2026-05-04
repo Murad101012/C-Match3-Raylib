@@ -22,7 +22,7 @@ uint16_t _rectangle_color = GREEN;
 int8_t gem_width = 32;
 int8_t gem_height = 32;
 
-uint16_t targeted_frame_rate = 1;
+uint16_t targeted_frame_rate = 10;
 
 game_state current_game_state = INPUT_WAITING;
 
