@@ -41,6 +41,8 @@ void _initialize_audio_engine()
     // 2. Setup output: Mono, 22050Hz, and 0dB gain (1.0f)
     tsf_set_output(g_TinySoundFont, TSF_MONO, 22050, 0);
 
+    tsf_channel_set_bank_preset(g_TinySoundFont, 9, 128, 0);
+
     // 3. Load the MIDI file instructions
     g_MidiFirstMsg = tml_load_memory(_neon_rose_midi, sizeof(_neon_rose_midi));
 
@@ -71,7 +73,15 @@ void _render_audio_block(int16_t *output_buffer, int samples_to_render)
             break;
         case TML_PROGRAM_CHANGE:
             // This changes the instrument (Piano, Drums, etc.)
-            tsf_channel_set_presetnumber(g_TinySoundFont, g_MidiCurrentMsg->channel, g_MidiCurrentMsg->program, (g_MidiCurrentMsg->channel == 9));
+            if (g_MidiCurrentMsg->channel == 9)
+            {
+                // Keep it in Bank 128 regardless of what the MIDI file asks
+                tsf_channel_set_bank_preset(g_TinySoundFont, 9, 128, g_MidiCurrentMsg->program);
+            }
+            else
+            {
+                tsf_channel_set_presetnumber(g_TinySoundFont, g_MidiCurrentMsg->channel, g_MidiCurrentMsg->program, 0);
+            }
             break;
         }
         g_MidiCurrentMsg = g_MidiCurrentMsg->next;

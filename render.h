@@ -8,3 +8,4 @@ void _refresh_the_screen_dirty();
 void initialize_render();
 void _add_entity_dirty(Vec2I entity_index);
 void _remove_entity_dirty(Vec2I entity_index);
+void _draw_selected_entity_frame(Vec2I entity_index);

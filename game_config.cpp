@@ -2,6 +2,7 @@
 #include "game_config.h"
 #include "gem_asset.h"
 #include "cell_asset.h"
+#include "selected_entity_frame_asset.h"
 
 uint8_t rows = 7;
 uint8_t cols = 7;
@@ -22,7 +23,7 @@ uint16_t _rectangle_color = GREEN;
 int8_t gem_width = 32;
 int8_t gem_height = 32;
 
-uint16_t targeted_frame_rate = 1;
+uint16_t targeted_frame_rate = 10;
 
 game_state current_game_state = INPUT_WAITING;
 
@@ -40,5 +41,7 @@ const uint16_t *gem_types_table[GEM_TYPE_LENGTH] = {
 const uint16_t *cell_table[1] = {
     cell
 };
+
+const uint16_t *entity_frame = selected_entity_frame;
 
 Touch_GT911 touch_input_screen(TOUCH_SDA, TOUCH_SCL, TOUCH_INT, TOUCH_RST, 480, 480);
