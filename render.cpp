@@ -67,6 +67,38 @@ void _draw_gem(Vec2I gem_index)
   }
 }
 
+void _draw_selected_entity_frame(Vec2I entity_index)
+{
+  cache_cell = get_cell_position(entity_index);
+  const uint16_t *frame_asset = entity_frame;
+  int step = 0;
+
+  for (int y = cache_cell.y; y < _rectangle_height + cache_cell.y; y++)
+  {
+    for (int x = cache_cell.x; x < _rectangle_width + cache_cell.x; x++)
+    {
+      if (frame_asset[step] != 0x0000)
+      {
+        test_buffer[y * 480 + x] = frame_asset[step];
+      }
+      step++;
+    }
+  }
+
+  _draw_gem(entity_index);
+
+  // This section (Partial Screen sending) get help by GEMINI
+  for (int row = 0; row < _rectangle_height; row++)
+  {
+    // Calculate where this specific row starts in the 480x480 buffer
+    uint16_t *row_ptr = test_buffer + ((cache_cell.y + row) * 480) + cache_cell.x;
+
+    // Draw one horizontal line at a time
+    // x, y, buffer, width, height(is 1 because we do it row by row)
+    gfx->draw16bitRGBBitmap(cache_cell.x, cache_cell.y + row, row_ptr, _rectangle_width, 1);
+  }
+}
+
 void _draw_all_cells()
 {
   for (int i = 0; i < MAX_ROWS; i++)
@@ -118,7 +150,6 @@ void _remove_entity_dirty(Vec2I entity_index)
 
 void _refresh_the_screen_dirty()
 {
-
   for (uint16_t i = 0; i < count_dirty_entities; i++)
   {
     Vec2I anim_pos = get_entity_animation_position(_entity_dirty[i]);

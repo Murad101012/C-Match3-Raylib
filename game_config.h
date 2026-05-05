@@ -58,6 +58,7 @@ extern game_state current_game_state;
 
 extern const uint16_t *gem_types_table[GEM_TYPE_LENGTH];
 extern const uint16_t *cell_table[1];
+extern const uint16_t *entity_frame;
 extern uint8_t gem_swap_animation_time_to_complete;
 
 typedef enum

@@ -169,12 +169,12 @@ void set_entity_position_by_pixel_animation(sequence_object *self)
 
     // 4. Apply your Lerp function for both axes
     set_entity_animation_position(entity_index, Vec2I{Lerp((float)current_visual.x, (float)target.x, t), Lerp((float)current_visual.y, (float)target.y, t)});
-    //Serial.printf("t: %f\n", t);
+    // Serial.printf("t: %f\n", t);
 
     // 5. Finalize when t reaches 1.0 (offset to 0.97f)
     if (t >= 1.0f)
     {
-      //Serial.printf("t is: %, so moved the position to target\n", t);
+      // Serial.printf("t is: %, so moved the position to target\n", t);
       set_entity_animation_position(entity_index, target);
       set_animation_state(Vec2I{entity_index.x, entity_index.y}, false);
       _refresh_the_screen_dirty();
@@ -279,6 +279,11 @@ static void _gem_choser(int row, int col)
       _chosen_gems_indexs[i].y = col;
       break;
     }
+  }
+  
+  if (_chosen_gems_indexs[0].x != -999 && _chosen_gems_indexs[0].x != -1)
+  {
+    _draw_selected_entity_frame(_chosen_gems_indexs[0]);
   }
 }
 
@@ -840,8 +845,6 @@ void logic()
     }
 
     _gem_choser(_returned_entity_index.x, _returned_entity_index.y);
-
-    // printf("First gem index:[%d][%d], Second gem index:[%d][%d]\n",_chosen_gems_indexs[0].x, _chosen_gems_indexs[0].y, _chosen_gems_indexs[1].x, _chosen_gems_indexs[1].y);
 
     if (_chosen_gems_indexs[GEM_CHOSEN_COUNT - 1].y != -999)
     {
